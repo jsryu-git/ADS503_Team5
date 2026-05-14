@@ -47,6 +47,3 @@ To use this project, first clone the repo on your device using the commands belo
 
 
 ## Presentations and projects
-
-* [ADS508 Final Presentation PDF](https://github.com/jsryu-git/ADS508_Final/blob/38aec0374b3734262542f407957cf11f5ab501ad/ADS508_Final_Presentation.pdf)
-* [ADS508 Final Presentation Video](https://youtu.be/4Kgh05TwN6E)
