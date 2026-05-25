@@ -1,0 +1,402 @@
+---
+title: "Exploratory Data Analysis"
+subtitle: "Diabetes Health Indicators (BRFSS 2015)"
+author: "Mehson Delan"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    code-fold: false
+    embed-resources: true
+    theme: cosmo
+    fig-width: 8
+    fig-height: 5
+  pdf:
+    toc: true
+    toc-depth: 3
+    number-sections: false
+    geometry:
+      - margin=0.9in
+    fig-width: 7
+    fig-height: 4.5
+    fig-pos: "H"
+    code-line-numbers: false
+execute:
+  warning: false
+  message: false
+  cache: true
+editor: visual
+---
+
+## Goal of this notebook
+
+Quick rundown before getting into it. The team is building models to predict diabetes status using a bunch of health and lifestyle survey questions from the CDC BRFSS 2015 dataset. This notebook is the EDA piece, so basically just looking at the data, seeing what the response variable looks like, and checking how each predictor lines up with it before anyone starts cleaning or modeling.
+
+```{r setup}
+library(tidyverse)
+library(skimr)
+library(corrplot)
+library(patchwork)
+library(scales)
+library(knitr)
+
+theme_set(theme_minimal(base_size = 11))
+
+dm_palette <- c("No Diabetes" = "#4C9F70", "Diabetes" = "#D1495B")
+```
+
+## Reading the data
+
+There are three csv files in the Raw Data folder. Each one is the same survey but coded a little differently, so worth knowing the difference up front.
+
+```{r load_data}
+df_binary <- read_csv("../Raw Data/diabetes_binary_health_indicators_BRFSS2015.csv")
+
+df_5050 <- read_csv("../Raw Data/diabetes_binary_5050split_health_indicators_BRFSS2015.csv")
+
+df_012 <- read_csv("../Raw Data/diabetes_012_health_indicators_BRFSS2015.csv")
+```
+
+```{r dataset_compare}
+tibble(
+  dataset = c("binary full", "binary 50 50", "three class"),
+  rows = c(nrow(df_binary), nrow(df_5050), nrow(df_012)),
+  cols = c(ncol(df_binary), ncol(df_5050), ncol(df_012)),
+  response = c("Diabetes_binary", "Diabetes_binary", "Diabetes_012")
+) |>
+  kable(caption = "What is in each csv file")
+```
+
+Going with the full binary dataset for the main EDA since it has the actual class split and way more rows. The 50 50 file is cool if we want a balanced training set later but the predictors basically look the same as the full file. The three class file is there in case anyone wants to keep prediabetes as its own category instead of lumping it in with diabetes.
+
+```{r pick_main}
+df <- df_binary
+```
+
+## Variable dictionary
+
+Pulled these descriptions from the BRFSS codebook so we all know what each column is. Heads up that Age, Education, and Income look like numbers but they are really just buckets, which matters once we start plotting them.
+
+```{r dictionary}
+var_dict <- tribble(
+  ~variable,              ~type,        ~description,
+  "Diabetes_binary",      "response",   "0 no diabetes, 1 prediabetes or diabetes",
+  "HighBP",               "binary",     "0 no high blood pressure, 1 high BP",
+  "HighChol",             "binary",     "0 no high cholesterol, 1 high cholesterol",
+  "CholCheck",            "binary",     "1 if cholesterol check in past 5 years",
+  "BMI",                  "continuous", "body mass index",
+  "Smoker",               "binary",     "smoked at least 100 cigarettes in lifetime",
+  "Stroke",               "binary",     "ever told had a stroke",
+  "HeartDiseaseorAttack", "binary",     "coronary heart disease or MI history",
+  "PhysActivity",         "binary",     "physical activity in past 30 days, not job related",
+  "Fruits",               "binary",     "consume fruit one or more times per day",
+  "Veggies",              "binary",     "consume veggies one or more times per day",
+  "HvyAlcoholConsump",    "binary",     "heavy drinker, 14 plus per week for men, 7 plus for women",
+  "AnyHealthcare",        "binary",     "any kind of health coverage",
+  "NoDocbcCost",          "binary",     "needed to see doc but could not because of cost",
+  "GenHlth",              "ordinal",    "general health 1 excellent to 5 poor",
+  "MentHlth",             "count",      "days of poor mental health in past 30",
+  "PhysHlth",             "count",      "days of poor physical health in past 30",
+  "DiffWalk",             "binary",     "serious difficulty walking or climbing stairs",
+  "Sex",                  "binary",     "0 female, 1 male",
+  "Age",                  "ordinal",    "age bracket 1 is 18 to 24 up to 13 is 80 plus",
+  "Education",            "ordinal",    "education level 1 to 6",
+  "Income",               "ordinal",    "income bracket 1 to 8"
+)
+
+var_dict |> kable()
+```
+
+## Structure and summary
+
+```{r glimpse}
+glimpse(df)
+```
+
+```{r skim}
+skim(df)
+```
+
+Couple things to call out from skim. Nothing is missing anywhere which makes life a lot easier. Everything is stored as numbers but most of the columns are really categorical. The only ones with real spread are BMI, MentHlth, and PhysHlth, the rest are basically 0 1 flags or ordered buckets.
+
+## Response variable
+
+Before getting into predictors it helps to see what we are actually trying to predict and how lopsided it is.
+
+```{r response_summary}
+df |>
+  count(Diabetes_binary) |>
+  mutate(
+    label = if_else(Diabetes_binary == 1, "Diabetes", "No Diabetes"),
+    pct = percent(n / sum(n), accuracy = 0.1)
+  ) |>
+  select(label, n, pct) |>
+  kable(caption = "Class balance for Diabetes_binary")
+```
+
+```{r response_plot, fig.height=3}
+df |>
+  mutate(label = if_else(Diabetes_binary == 1, "Diabetes", "No Diabetes")) |>
+  count(label) |>
+  mutate(pct = n / sum(n)) |>
+  ggplot(aes(x = label, y = pct, fill = label)) +
+  geom_col(width = 0.6) +
+  geom_text(aes(label = percent(pct, accuracy = 0.1)), vjust = -0.4) +
+  scale_y_continuous(labels = percent_format(), limits = c(0, 1)) +
+  scale_fill_manual(values = dm_palette) +
+  labs(title = "Class balance is heavily skewed",
+       subtitle = "Only about 14 percent of respondents report diabetes",
+       x = NULL, y = "share of respondents", fill = NULL) +
+  theme(legend.position = "none")
+```
+
+Only about 14 percent positive class, so super imbalanced. Worth calling out early because it changes which metric the modeling person should care about (accuracy will be useless) and whether they need to resample at all. The 50 50 file is one shortcut for that, SMOTE or class weights are other options.
+
+## Numerical relationships to response
+
+Before plotting every variable one at a time it helps to have a single ranked table of how strongly each predictor moves with the response. For the binary and ordinal columns I used Cramer's V from a chi squared test, and for the continuous ones I used Cohen's d which is just the standardized mean difference between the two groups.
+
+```{r assoc_helpers}
+cramers_v <- function(x, y) {
+  tbl <- table(x, y)
+  chi <- suppressWarnings(chisq.test(tbl))
+  n <- sum(tbl)
+  phi2 <- chi$statistic / n
+  r <- nrow(tbl)
+  c <- ncol(tbl)
+  as.numeric(sqrt(phi2 / min(r - 1, c - 1)))
+}
+
+cohens_d <- function(x, group) {
+  m1 <- mean(x[group == 1])
+  m0 <- mean(x[group == 0])
+  s1 <- sd(x[group == 1])
+  s0 <- sd(x[group == 0])
+  n1 <- sum(group == 1)
+  n0 <- sum(group == 0)
+  sp <- sqrt(((n1 - 1) * s1^2 + (n0 - 1) * s0^2) / (n1 + n0 - 2))
+  (m1 - m0) / sp
+}
+```
+
+```{r assoc_table}
+binary_vars <- c("HighBP", "HighChol", "CholCheck", "Smoker", "Stroke",
+                 "HeartDiseaseorAttack", "PhysActivity", "Fruits", "Veggies",
+                 "HvyAlcoholConsump", "AnyHealthcare", "NoDocbcCost",
+                 "DiffWalk", "Sex")
+
+ordinal_vars <- c("GenHlth", "Age", "Education", "Income")
+
+continuous_vars <- c("BMI", "MentHlth", "PhysHlth")
+
+cat_assoc <- map_dfr(c(binary_vars, ordinal_vars), function(v) {
+  tibble(variable = v,
+         type = if_else(v %in% binary_vars, "binary", "ordinal"),
+         metric = "Cramer's V",
+         strength = cramers_v(df[[v]], df$Diabetes_binary))
+})
+
+num_assoc <- map_dfr(continuous_vars, function(v) {
+  tibble(variable = v,
+         type = "continuous",
+         metric = "Cohen's d (abs)",
+         strength = abs(cohens_d(df[[v]], df$Diabetes_binary)))
+})
+
+assoc_all <- bind_rows(cat_assoc, num_assoc) |>
+  arrange(desc(strength))
+
+assoc_all |>
+  mutate(strength = round(strength, 3)) |>
+  kable(caption = "Predictor association with Diabetes_binary")
+```
+
+```{r assoc_plot, fig.height=6}
+assoc_all |>
+  mutate(variable = fct_reorder(variable, strength)) |>
+  ggplot(aes(x = strength, y = variable, fill = type)) +
+  geom_col() +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "Which predictors move with diabetes status the most",
+       subtitle = "Cramer's V for categorical, absolute Cohen's d for continuous",
+       x = "association strength", y = NULL, fill = "predictor type")
+```
+
+BMI is the strongest single signal, then PhysHlth, GenHlth, HighBP, and DiffWalk. After that there is a cluster of okay predictors that sit pretty close together, HighChol, Age, HeartDiseaseorAttack, and Income. Just a note that Cohen's d and Cramer's V are not on the same scale so this is a rough ranking, not a perfect side by side. The food and lifestyle flags like Fruits, Veggies, Smoker, and AnyHealthcare are pretty weak on their own, which does not mean they are useless once everything is in a model together but they probably will not show up near the top of any feature importance chart.
+
+## Binary predictors versus the response
+
+For each yes no predictor we want to see the diabetes rate in the Yes group versus the No group. The bigger the gap between those two bars, the stronger the predictor.
+
+```{r binary_rates}
+binary_long <- df |>
+  select(all_of(binary_vars), Diabetes_binary) |>
+  pivot_longer(all_of(binary_vars), names_to = "predictor", values_to = "level") |>
+  group_by(predictor, level) |>
+  summarise(rate = mean(Diabetes_binary), n = n(), .groups = "drop") |>
+  mutate(level = factor(level, levels = c(0, 1), labels = c("No", "Yes")))
+
+binary_long |>
+  arrange(predictor, level) |>
+  mutate(rate = percent(rate, accuracy = 0.1)) |>
+  kable(caption = "Diabetes rate by binary predictor level")
+```
+
+```{r binary_plot, fig.height=8}
+binary_long |>
+  ggplot(aes(x = level, y = rate, fill = level)) +
+  geom_col(width = 0.6) +
+  geom_text(aes(label = percent(rate, accuracy = 0.1)), vjust = -0.4, size = 2.8) +
+  facet_wrap(~ predictor, ncol = 4, scales = "free_y") +
+  scale_y_continuous(labels = percent_format(), expand = expansion(mult = c(0, 0.2))) +
+  scale_fill_manual(values = c("No" = "#94B6D2", "Yes" = "#D1495B")) +
+  labs(title = "Diabetes rate within each binary predictor",
+       subtitle = "Bigger gap between No and Yes means stronger predictor",
+       x = NULL, y = "diabetes rate") +
+  theme(legend.position = "none",
+        strip.text = element_text(size = 9))
+```
+
+A few things stand out here. HighBP, HighChol, HeartDiseaseorAttack, Stroke, and DiffWalk all have much higher diabetes rates in the Yes group, sometimes more than double the No group. CholCheck is a weird one because basically everybody has had a cholesterol check so the No group is super small, but that small group does have a lower diabetes rate, probably just younger or healthier people who skip the doctor. HvyAlcoholConsump goes the opposite direction from what you would expect, heavy drinkers actually have a lower diabetes rate, which feels off and is probably some kind of weird sampling thing rather than a real effect. Fruits, Veggies, and AnyHealthcare barely change anything between Yes and No.
+
+## Continuous predictors versus the response
+
+BMI, MentHlth, and PhysHlth are the only columns that actually have a real range of values, so for these it makes sense to look at means and distributions split by diabetes status.
+
+```{r cont_summary}
+df |>
+  select(all_of(continuous_vars), Diabetes_binary) |>
+  pivot_longer(all_of(continuous_vars), names_to = "variable") |>
+  group_by(variable, Diabetes_binary) |>
+  summarise(mean = mean(value),
+            median = median(value),
+            sd = sd(value),
+            .groups = "drop") |>
+  mutate(class = if_else(Diabetes_binary == 1, "Diabetes", "No Diabetes")) |>
+  select(variable, class, mean, median, sd) |>
+  arrange(variable, class) |>
+  mutate(across(c(mean, median, sd), \(x) round(x, 2))) |>
+  kable(caption = "Continuous predictors split by diabetes status")
+```
+
+```{r cont_box, fig.height=4}
+df |>
+  select(all_of(continuous_vars), Diabetes_binary) |>
+  pivot_longer(all_of(continuous_vars), names_to = "variable") |>
+  mutate(class = if_else(Diabetes_binary == 1, "Diabetes", "No Diabetes")) |>
+  ggplot(aes(x = class, y = value, fill = class)) +
+  geom_boxplot(outlier.alpha = 0.1, outlier.size = 0.6) +
+  facet_wrap(~ variable, scales = "free_y") +
+  scale_fill_manual(values = dm_palette) +
+  labs(title = "Continuous predictors by class",
+       x = NULL, y = NULL, fill = NULL) +
+  theme(legend.position = "bottom")
+```
+
+```{r cont_density, fig.height=4}
+df |>
+  select(all_of(continuous_vars), Diabetes_binary) |>
+  pivot_longer(all_of(continuous_vars), names_to = "variable") |>
+  mutate(class = if_else(Diabetes_binary == 1, "Diabetes", "No Diabetes")) |>
+  ggplot(aes(x = value, fill = class)) +
+  geom_density(alpha = 0.4) +
+  facet_wrap(~ variable, scales = "free") +
+  scale_fill_manual(values = dm_palette) +
+  labs(title = "Density of continuous predictors by class",
+       x = NULL, y = "density", fill = NULL) +
+  theme(legend.position = "bottom")
+```
+
+BMI shifts up pretty clearly for the diabetes group, with a longer tail going to the right. MentHlth and PhysHlth both have a huge spike at zero because most people say they had no bad days, but the diabetes group definitely has more people stuck at the 30 day end. Both of these probably need some kind of recode or transformation later, maybe just a simple flag for any bad days at all, but that is the wrangling person's call.
+
+```{r cont_outliers}
+df |>
+  summarise(
+    bmi_over_50 = sum(BMI > 50),
+    bmi_over_60 = sum(BMI > 60),
+    bmi_max = max(BMI)
+  ) |>
+  kable(caption = "BMI extreme value counts")
+```
+
+BMI goes all the way up to 98 in the data, which is not a realistic number for a person, so those values are almost definitely bad entries.
+
+## Ordinal predictors versus the response
+
+```{r ord_rates}
+ord_long <- df |>
+  select(all_of(ordinal_vars), Diabetes_binary) |>
+  pivot_longer(all_of(ordinal_vars), names_to = "predictor", values_to = "level") |>
+  group_by(predictor, level) |>
+  summarise(rate = mean(Diabetes_binary), n = n(), .groups = "drop")
+
+ord_long |>
+  ggplot(aes(x = level, y = rate)) +
+  geom_col(fill = "#3B7EA1") +
+  geom_text(aes(label = percent(rate, accuracy = 0.1)), vjust = -0.4, size = 2.5) +
+  facet_wrap(~ predictor, scales = "free_x") +
+  scale_y_continuous(labels = percent_format(), expand = expansion(mult = c(0, 0.2))) +
+  labs(title = "Diabetes rate by ordinal predictor level",
+       x = "level", y = "diabetes rate")
+```
+
+GenHlth has the cleanest trend by far, climbing from about 2.5 percent at level 1 (excellent) all the way up to almost 38 percent at level 5 (poor). Age goes up pretty steadily through the middle brackets and peaks around 22 percent in bracket 11, which is roughly age 70 to 74, and then actually drops a bit in the oldest brackets. That dip in the oldest groups is probably just because people with severe diabetes do not live as long, not because old people are less likely to have it. Education and Income both go the other direction, the lower the bracket the higher the diabetes rate, which makes sense given what we already know about diabetes and access to healthcare and healthy food.
+
+## Predictor to predictor correlations
+
+It is not just about each predictor versus the response, we also want to see which predictors are basically saying the same thing as each other. If two columns are super correlated they can mess up some models, especially linear ones, so they might need to be dropped or combined later.
+
+```{r corr_matrix, fig.height=8, fig.width=8}
+cor_mat <- df |>
+  select(-Diabetes_binary) |>
+  cor(method = "spearman")
+
+corrplot(cor_mat,
+         method = "color",
+         type = "upper",
+         tl.cex = 0.7,
+         tl.col = "black",
+         addCoef.col = "black",
+         number.cex = 0.55,
+         col = colorRampPalette(c("#3B7EA1", "white", "#D1495B"))(200))
+```
+
+```{r corr_pairs}
+cor_df <- as.data.frame(as.table(cor_mat)) |>
+  filter(as.character(Var1) < as.character(Var2)) |>
+  arrange(desc(abs(Freq))) |>
+  rename(var1 = Var1, var2 = Var2, spearman = Freq) |>
+  head(15)
+
+cor_df |>
+  mutate(spearman = round(spearman, 3)) |>
+  kable(caption = "Top 15 absolute correlations between predictors")
+```
+
+GenHlth, PhysHlth, MentHlth, and DiffWalk are all kind of measuring the same thing (general health stuff) so they hang together. Education and Income are correlated which is what you would expect. PhysActivity is connected to DiffWalk and GenHlth in the obvious way too. Nothing is crazy high so it is not a big multicollinearity problem, but the modeling person should still keep an eye on these for the linear models.
+
+## Summary findings
+
+1. The full binary file has around 253 thousand rows and 21 predictors, nothing missing anywhere, everything stored as numbers.
+2. Class balance is only about 14 percent diabetes, so whoever models this has to handle the imbalance somehow, either by resampling, using class weights, or just picking a metric that is not accuracy.
+3. The strongest single predictors are BMI, PhysHlth, GenHlth, HighBP, and DiffWalk, with HighChol, Age, HeartDiseaseorAttack, and Income right behind them.
+4. BMI, MentHlth, and PhysHlth are the only columns with a real range. BMI has some clearly fake values up at 98 that need to be dealt with, and MentHlth and PhysHlth are super zero heavy so they could probably use a recode.
+5. Most of the predictors are binary or ordinal, so models that handle categories well (after encoding) are going to be the easiest fit.
+6. Predictor to predictor correlations are mostly not too bad, but the health stuff (GenHlth, PhysHlth, DiffWalk) overlaps a lot, and Income and Education are tied together like you would expect.
+
+## Path forward for data wrangling and splitting
+
+### Things to decide
+
+- Probably go with the binary response. The three class version is interesting but prediabetes is under 2 percent of the sample which is really hard to model without leaning hard on resampling.
+- Start from the full binary file. It has the actual class split and way more rows. The 50 50 file looks easier because it is already balanced, but it tosses out most of the no diabetes people to get there, so a cleaner path is to use the full file and deal with the imbalance inside the training split.
+- The columns are stored as numbers but most are really categories, so binary flags should be turned into factors and the ordinals (GenHlth, Age, Education, Income) should be ordered factors so the order actually means something.
+
+### Cleaning to do
+
+- BMI has values going up to 98 which is not a real human BMI, so the high end needs a decision. Could winsorize at the 99th percentile, cap at something like 60, or just drop those rows entirely.
+- MentHlth and PhysHlth are both super zero heavy since most people report no bad days, so it is worth deciding whether to keep them as raw counts, swap them for a simple flag for any bad days, or bucket them into none, some, many.
+- HvyAlcoholConsump comes out weird, heavy drinkers have a lower diabetes rate than non drinkers, which is almost definitely some kind of sampling thing and not a real protective effect. Worth a callout in the report so nobody spins it as a real finding.
+- Almost everybody in the sample has had a cholesterol check in the past 5 years, so the CholCheck No group is really small. Worth keeping an eye on whether any model freaks out on that rare level.
