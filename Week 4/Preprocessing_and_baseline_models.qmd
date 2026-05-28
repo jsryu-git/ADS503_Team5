@@ -1,0 +1,381 @@
+---
+title: "Preprocessing and Baseline Models"
+subtitle: "Diabetes Health Indicators (BRFSS 2015)"
+author: "Jun Sik Ryu"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    toc-location: left
+    code-fold: false
+    embed-resources: true
+    theme: cosmo
+    fig-width: 8
+    fig-height: 5
+  pdf:
+    toc: true
+    toc-depth: 3
+    number-sections: false
+    geometry:
+      - margin=0.9in
+    fig-width: 7
+    fig-height: 4.5
+    fig-pos: "H"
+    code-line-numbers: false
+execute:
+  warning: false
+  message: false
+  cache: true
+editor: visual
+---
+
+## Goal of this notebook
+
+This notebook continues from the exploratory data analysis and focuses on preparing the BRFSS diabetes dataset for predictive modeling. The main goals are to split the data, create a reusable preprocessing workflow, fit a baseline logistic regression model, and evaluate baseline performance before comparing more advanced models.
+
+The full binary diabetes dataset is used because it preserves the original class distribution and gives a realistic benchmark for model performance.
+
+```{r setup}
+library(tidyverse)
+library(skimr)
+library(corrplot)
+library(ggcorrplot)
+library(patchwork)
+library(scales)
+library(knitr)
+library(caret)
+library(recipes)
+library(yardstick)
+library(pROC)
+
+
+theme_set(theme_minimal(base_size = 11))
+
+dm_palette <- c("No Diabetes" = "#4C9F70", "Diabetes" = "#D1495B")
+```
+
+## Data Ingestion
+
+Loading the 2015 BRFSS health indicators dataset.
+
+```{r load_data}
+df <- read_csv("../Raw Data/diabetes_binary_5050split_health_indicators_BRFSS2015.csv")
+```
+
+```{r inspect_data}
+glimpse(df)
+```
+
+## Target Variable Encoding
+
+Converting the target variable Diabetes_binary into a factor and mapping explicit labels to make downstream confusion matrices and evaluation metrics readable.
+
+```{r response_factor}
+df <- df |>
+  mutate(
+    Diabetes_binary = factor(
+      Diabetes_binary,
+      levels = c(0, 1),
+      labels = c("No Diabetes", "Diabetes")
+    )
+  )
+```
+
+```{r response_check}
+df |>
+  count(Diabetes_binary) |>
+  mutate(percent = percent(n / sum(n))) |>
+  kable(caption = "Target Class Base Distribution")
+```
+
+## Train and test split
+
+Implementing a stratified 80/20 split to ensure both the training and testing sets closely mirror the original, imbalanced class proportions.
+
+```{r train_test_split}
+set.seed(503)
+
+split_index <- createDataPartition(
+  df$Diabetes_binary,
+  p = 0.80,
+  list = FALSE
+)
+
+train_data <- df[split_index, ]
+test_data <- df[-split_index, ]
+```
+
+## Class Balance Verification
+
+```{r split_balance_train}
+prop.table(table(train_data$Diabetes_binary))
+```
+
+```{r split_balance_test}
+prop.table(table(test_data$Diabetes_binary))
+```
+
+```{r split_summary}
+bind_rows(
+  train_data |>
+    count(Diabetes_binary) |>
+    mutate(dataset = "Training"),
+  test_data |>
+    count(Diabetes_binary) |>
+    mutate(dataset = "Testing")
+) |>
+  group_by(dataset) |>
+  mutate(percent = percent(n / sum(n))) |>
+  ungroup() |>
+  select(dataset, Diabetes_binary, n, percent) |>
+  kable(caption = "Train vs Test Set Class Distribution Breakdown")
+```
+
+The split is consistent. Testing on this distribution ensures our validation metrics reflect real-world performance on imbalanced survey data.
+
+## Feature Engineering & Preprocessing Pipeline
+
+Defining a recipes pipeline strictly on the training data to isolate parameters and guarantee no data leakage occurs before modeling. Steps include removing zero-variance features and standardizing numeric predictors.
+
+```{r preprocessing_recipe}
+diabetes_recipe <- recipe(
+  Diabetes_binary ~ .,
+  data = train_data
+) |>
+  step_zv(all_predictors()) |>
+  step_normalize(all_numeric_predictors())
+```
+
+```{r prep_recipe}
+diabetes_prep <- prep(
+  diabetes_recipe,
+  training = train_data
+)
+```
+
+```{r bake_data}
+train_processed <- bake(diabetes_prep, new_data = train_data)
+
+test_processed <- bake(diabetes_prep, new_data = test_data)
+```
+
+```{r processed_check}
+glimpse(train_processed)
+```
+
+## Baseline model: Logistic regression
+
+Fitting a standard logistic regression model. This serves as our simple, interpretable benchmark against which we will test more complex tree-based or non-linear architectures.
+
+```{r baseline_glm}
+baseline_glm <- glm(
+  Diabetes_binary ~ .,
+  data = train_processed,
+  family = binomial
+)
+```
+
+## Baseline model summary
+
+```{r baseline_summary}
+summary(baseline_glm)
+```
+
+The summary points to a few strong initial predictors, though we need to keep an eye on collinearity and class imbalance issues during final feature selection.
+
+## Evaluation (Default 0.50 Threshold)
+
+Generating predicted probabilities on the holdout test set using a standard 0.50 decision cutoff.
+
+```{r baseline_predictions}
+baseline_probs <- predict(
+  baseline_glm,
+  newdata = test_processed,
+  type = "response"
+)
+
+baseline_preds <- ifelse(
+  baseline_probs >= 0.50,
+  "Diabetes",
+  "No Diabetes"
+)
+
+baseline_preds <- factor(
+  baseline_preds,
+  levels = c("No Diabetes", "Diabetes")
+)
+```
+
+## Confusion matrix & Key Metrics
+
+```{r confusion_matrix}
+baseline_cm <- confusionMatrix(
+  data = baseline_preds,
+  reference = test_processed$Diabetes_binary,
+  positive = "Diabetes"
+)
+
+baseline_cm
+```
+
+```{r baseline_metrics}
+baseline_results <- tibble(
+  truth = test_processed$Diabetes_binary,
+  estimate = baseline_preds,
+  probability_diabetes = baseline_probs
+)
+
+metric_summary <- tibble(
+  metric = c(
+    "Accuracy",
+    "Sensitivity",
+    "Specificity",
+    "Balanced Accuracy"
+  ),
+  value = c(
+    baseline_cm$overall["Accuracy"],
+    baseline_cm$byClass["Sensitivity"],
+    baseline_cm$byClass["Specificity"],
+    baseline_cm$byClass["Balanced Accuracy"]
+  )
+)
+
+metric_summary |>
+  mutate(value = round(value, 4)) |>
+  kable(caption = "Baseline logistic regression performance")
+```
+
+Accuracy alone may be misleading because the dataset is imbalanced. Sensitivity and specificity should be reviewed together to determine whether the model is detecting diabetes cases effectively or mostly predicting the majority class.
+
+## ROC AUC
+
+```{r roc_auc}
+roc_obj <- roc(
+  response = test_processed$Diabetes_binary,
+  predictor = baseline_probs,
+  levels = c("No Diabetes", "Diabetes")
+)
+
+auc_value <- auc(roc_obj)
+
+auc_value
+```
+
+```{r roc_curve}
+plot(
+  roc_obj,
+  main = "Baseline Logistic Regression ROC Curve"
+)
+```
+
+The AUC gives us a threshold-independent look at how well the model separates the two classes.  
+
+## Prediction Spread
+
+```{r Prediction Spread}
+baseline_results |>
+  ggplot(aes(x = probability_diabetes, fill = truth)) +
+  geom_histogram(
+    bins = 40,
+    alpha = 0.7,
+    position = "identity"
+  ) +
+  scale_fill_manual(values = dm_palette) +
+  labs(
+    title = "Predicted Probability Distribution vs. Ground Truth",
+    x = "Predicted Probability of Diabetes",
+    y = "Count",
+    fill = "True Class"
+  )
+```
+
+This distribution highlights the overlap between the two classes. Pulling these distributions apart will be the core challenge for our next models.
+
+## Tuning the Classification Threshold
+
+Given the data imbalance and the high clinical cost of missing a diabetes case (false negatives), the default 0.50 threshold is likely too conservative. Here is a quick look at performance if we drop the decision boundary to 0.30 to prioritize recall.
+
+```{r threshold_030}
+baseline_preds_030 <- ifelse(
+  baseline_probs >= 0.30,
+  "Diabetes",
+  "No Diabetes"
+)
+
+baseline_preds_030 <- factor(
+  baseline_preds_030,
+  levels = c("No Diabetes", "Diabetes")
+)
+
+confusionMatrix(
+  data = baseline_preds_030,
+  reference = test_processed$Diabetes_binary,
+  positive = "Diabetes"
+)
+```
+
+## Full Threshold Tradeoff Sweep
+
+Mapping out the exact trade-offs across the entire threshold range.  
+
+```{r threshold_compare}
+threshold_grid <- tibble(
+  threshold = seq(0.10, 0.90, by = 0.05)
+) |>
+  mutate(
+    predictions = map(
+      threshold,
+      ~ factor(
+        ifelse(baseline_probs >= .x,
+               "Diabetes",
+               "No Diabetes"),
+        levels = c("No Diabetes", "Diabetes")
+      )
+    ),
+    cm = map(
+      predictions,
+      ~ confusionMatrix(
+        data = .x,
+        reference = test_processed$Diabetes_binary,
+        positive = "Diabetes"
+      )
+    ),
+    accuracy = map_dbl(cm, ~ .x$overall["Accuracy"]),
+    sensitivity = map_dbl(cm, ~ .x$byClass["Sensitivity"]),
+    specificity = map_dbl(cm, ~ .x$byClass["Specificity"]),
+    balanced_accuracy = map_dbl(cm, ~ .x$byClass["Balanced Accuracy"])
+  )
+```
+
+```{r threshold_plot}
+threshold_grid |>
+  select(threshold, accuracy, sensitivity, specificity, balanced_accuracy) |>
+  pivot_longer(
+    cols = -threshold,
+    names_to = "metric",
+    values_to = "value"
+  ) |>
+  ggplot(aes(x = threshold, y = value, color = metric)) +
+  geom_line(linewidth = 1) +
+  geom_point(size = 1.8) +
+  scale_y_continuous(labels = percent_format()) +
+  labs(
+    title = "Baseline Model Performance Across Thresholds",
+    x = "Classification Threshold",
+    y = "Metric Value",
+    color = "Metric"
+  )
+```
+
+This visualization lets us pick a threshold tailored to our specific goals. For public health screening, maximizing sensitivity is vital to ensure high-risk individuals aren't missed.
+
+## Baseline model interpretation
+
+Our baseline pipeline is stable, and the logistic regression model gives us a solid performance floor. While useful and interpretable, a linear approach likely fails to capture non-linear interactions hidden in this survey data.  
+
+Moving forward, the plan is to implement cross-validation and evaluate:  
+1. Penalized Regression (Elastic Net) to address correlated predictors.  
+2. Tree-based models (Random Forest, XGBoost) to better handle non-linear feature interactions and class imbalances.  
+
+We will evaluate all models using consistent metrics, prioritizing ROC AUC and Balanced Accuracy.  
