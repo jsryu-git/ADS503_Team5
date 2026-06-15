@@ -265,7 +265,7 @@ best_gbm <- mod_gbm$finalModel
 ```
 
 ```{r export-workspace}
-# Set working directory to ensure it saves to your project data folder
+# Set working directory to ensure it saves to a project data folder
 setwd(r"(C:\Users\User\ADS503_Team5\Raw Data)")
 # Save all trained models and preprocessed test objects for the evaluation file
 save(
