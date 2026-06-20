@@ -189,5 +189,15 @@ Random Forest vs. LDA: p-value is 0.01421 . Difference is 0.0185307. The result 
 
 Random Forest vs. Elastic Net: p-value is 0.01206 . Difference is 0.0183185 The result is statistically significant (P<0.05) and despite the small difference, Elastic Net does outperform Random Forest in specificity 
 
-
+Exporting the models to model_evaulation
+```{r export-workspace}
+# Set working directory to ensure it saves to a project data folder
+setwd(r"(C:\Users\User\ADS503_Team5\Raw Data)")
+# Save evaluation file
+save(
+  mod_glm, mod_glmnet, mod_rf, mod_gbm, models,
+  bestTunes, calibration_df, test_y, resamples_diff, res, roc_list,
+  file = "evaluated_models.RData"
+)
+```
 
