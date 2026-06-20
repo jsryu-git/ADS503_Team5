@@ -66,4 +66,16 @@ ggplot(important_variables) +
        x = "Predictor", y = "Importance (0% to 100%)") +
   theme_minimal()
 ```
-The distribution of importance shows that the leading indicators of diabetes are: General Health (100%), High BP (77.06%), BMI (44.63%), Age (30.15%), HighChol (23.91%), and DiffWalk (4.96%). 
+The distribution of importance shows that the leading indicators of diabetes are: General Health (100%), High BP (77.06%), BMI (44.63%), Age (30.15%), HighChol (23.91%), and DiffWalk (4.96%).
+
+Confusion Matrix
+```{r}
+print(gbm_cm)
+```
+
+The final values for the GBM Model are:
+ROC AUC           : 0.8302
+Accuracy          : 0.7504 
+Balanced Accuracy : 0.7504
+Sensitivity       : 0.7748          
+Specificity       : 0.7260 
