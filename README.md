@@ -92,11 +92,11 @@ Models were evaluated using:
 •	Cross-validation performance
 
 ### Repository Structure  
+```text
 ADS503_Team5/
 │
 ├── Data/
 │   ├── Raw Data/
-│   └── Processed Data/
 │
 ├── EDA.qmd
 ├── Preprocessing_and_baseline_models.qmd
@@ -104,10 +104,10 @@ ADS503_Team5/
 ├── Final_Report_Team5.qmd
 │
 ├── Presentation/
-│
 ├── Figures/
 │
 └── README.md
+```
 
 ### Technologies  
 * R  
