@@ -92,7 +92,7 @@ Models were evaluated using:
 •	Cross-validation performance
 
 ### Repository Structure  
-ADS503_Team5/
+ADS503_Team5/  
 │
 ├── Data/
 │   ├── Raw Data/
