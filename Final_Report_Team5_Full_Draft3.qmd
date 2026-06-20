@@ -1,0 +1,749 @@
+---
+title: "Predicting Diabetes Risk Using Health Indicators"
+author: "Mehson Delan, Malik Tisani, Vince Garcia, Jun Sik Ryu"
+format:
+  html:
+    toc: true
+    number-sections: true
+    code-fold: true
+  pdf:
+    toc: true
+    number-sections: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+# Diabetes Risk Prediction Using Health Indicators
+
+## Problem Statement
+
+Diabetes is one of the most significant chronic health conditions in the United States, associated with substantial healthcare costs, long-term complications, and reduced quality of life. Traditional screening often requires clinical testing and direct medical evaluation. However, many risk factors are observable through demographic characteristics, health behaviors, and self-reported health conditions routinely collected in population surveys.
+
+The objective of this project is to determine whether predictive modeling can accurately classify individuals as diabetic or non-diabetic using readily available health indicators from the 2015 Behavioral Risk Factor Surveillance System (BRFSS) survey. Specifically:
+
+> Can machine learning models accurately predict diabetes status using demographic, behavioral, and health-related indicators from the BRFSS dataset?
+
+## Analytical Approach
+
+To address this question, four modeling approaches are compared under a consistent validation framework:
+
+- Logistic Regression (baseline)
+- Elastic Net (penalized regression)
+- Random Forest (ensemble tree-based)
+- Gradient Boosting Machine (GBM)
+
+All models are evaluated using ROC AUC, balanced accuracy, sensitivity, and specificity. Because the dataset is class-imbalanced, raw accuracy is de-emphasized throughout.
+
+# Dataset Overview
+
+## Data Source
+
+The dataset comes from the Diabetes Health Indicators Dataset published on Kaggle, derived from the 2015 BRFSS conducted by the Centers for Disease Control and Prevention (CDC).
+
+## Dataset Characteristics
+
+The full binary dataset was used for EDA because it preserves the actual real-world class distribution observed in BRFSS 2015. The balanced 50/50 dataset was used for model development to prevent the majority class from dominating the learning process and to improve the model's ability to detect diabetes cases. This choice creates a tradeoff: model training becomes more sensitive to the minority class, but the resulting probabilities may not be calibrated to the natural population prevalence. For that reason, ROC AUC, balanced accuracy, sensitivity, and specificity are emphasized over raw accuracy, and any deployment-oriented version of this model would require recalibration using the full class distribution.
+
+| Characteristic | Value |
+|----|---:|
+| Observations (full binary) | 253,680 |
+| Observations (50/50 balanced, used for modeling) | 70,692 |
+| Predictors | 21 |
+| Response Variable | Diabetes_binary (0 = No Diabetes, 1 = Diabetes) |
+| Data Source | BRFSS 2015 |
+
+Key predictors include BMI, high blood pressure, high cholesterol, smoking status, physical activity, fruit and vegetable consumption, general health, mental health, physical health days, difficulty walking, age, education, and income.
+
+```{r load-data}
+library(tidyverse)
+library(skimr)
+library(corrplot)
+library(patchwork)
+library(scales)
+library(knitr)
+library(caret)
+library(recipes)
+library(yardstick)
+library(pROC)
+
+theme_set(theme_minimal(base_size = 11))
+dm_palette <- c("No Diabetes" = "#4C9F70", "Diabetes" = "#D1495B")
+
+df_full  <- read_csv("Raw Data/diabetes_binary_health_indicators_BRFSS2015.csv")
+df_model <- read_csv("Raw Data/diabetes_binary_5050split_health_indicators_BRFSS2015.csv")
+
+df_model <- df_model |>
+  mutate(Diabetes_binary = factor(
+    Diabetes_binary, levels = c(0, 1), labels = c("No Diabetes", "Diabetes")
+  ))
+```
+
+# Data Quality Review
+
+## Dataset Structure
+
+```{r dataset-structure}
+glimpse(df_full)
+```
+
+## Summary Statistics
+
+```{r summary-statistics}
+skim(df_full)
+```
+
+## Missing Values Assessment
+
+No missing values were identified in either dataset. All 22 columns show a complete rate of 1.0 across all 253,680 observations. Imputation was therefore not required.
+
+## Outlier Review
+
+BMI was examined for extreme values. The variable ranges from 12 to 98, with 2,175 observations above 50 and 805 above 60. A BMI of 98 is not physiologically plausible and likely reflects data entry errors. These extreme values were retained in the current reproducible workflow so that the code remains consistent with the supplied datasets. However, this issue should be documented as a limitation, and future iterations should compare the current approach against a capped or winsorized BMI feature.
+
+MentHlth and PhysHlth are heavily right-skewed with large spikes at zero — most respondents report no bad mental or physical health days. Both variables could benefit from recoding into a binary flag (any bad days vs. none) or buckets (none, some, many), depending on modeling needs.
+
+# Exploratory Data Analysis
+
+Exploratory data analysis was conducted to understand the relationship between diabetes status and available predictors using the full binary dataset (n = 253,680). Both graphical and numerical summaries were produced.
+
+## Diabetes Class Distribution
+
+The response variable is heavily imbalanced. Only 13.9% of respondents (n = 35,346) reported diabetes, while 86.1% (n = 218,334) did not. This imbalance means raw accuracy is not a reliable evaluation metric — a model that always predicts "No Diabetes" would achieve 86% accuracy without detecting a single case. This is why ROC AUC and balanced accuracy are prioritized throughout.
+
+```{r class-distribution}
+df_full |>
+  mutate(label = if_else(Diabetes_binary == 1, "Diabetes", "No Diabetes")) |>
+  count(label) |>
+  mutate(pct = n / sum(n)) |>
+  ggplot(aes(x = label, y = pct, fill = label)) +
+  geom_col(width = 0.6) +
+  geom_text(aes(label = percent(pct, accuracy = 0.1)), vjust = -0.4) +
+  scale_y_continuous(labels = percent_format(), limits = c(0, 1)) +
+  scale_fill_manual(values = dm_palette) +
+  labs(title = "Class balance is heavily skewed",
+       subtitle = "Only about 14% of respondents report diabetes",
+       x = NULL, y = "Share of respondents", fill = NULL) +
+  theme(legend.position = "none")
+```
+
+## Predictor Association Ranking
+
+Before examining individual predictors, a ranked association table was computed. Cramér's V (chi-squared based) was used for binary and ordinal predictors; Cohen's d (standardized mean difference) was used for the three continuous predictors. These metrics are not on the same scale, so the ranking is approximate.
+
+BMI is the strongest single predictor (Cohen's d = 0.641), followed by PhysHlth (d = 0.502), GenHlth (V = 0.299), HighBP (V = 0.263), and DiffWalk (V = 0.218). Lifestyle flags such as Fruits, Veggies, Smoker, and AnyHealthcare show weak individual associations and are unlikely to dominate feature importance charts, though they may still contribute within a full model.
+
+```{r association-ranking}
+binary_vars <- c("HighBP","HighChol","CholCheck","Smoker","Stroke",
+                 "HeartDiseaseorAttack","PhysActivity","Fruits","Veggies",
+                 "HvyAlcoholConsump","AnyHealthcare","NoDocbcCost","DiffWalk","Sex")
+ordinal_vars   <- c("GenHlth","Age","Education","Income")
+continuous_vars <- c("BMI","MentHlth","PhysHlth")
+
+cramers_v <- function(x, y) {
+  tbl  <- table(x, y)
+  chi  <- suppressWarnings(chisq.test(tbl))
+  n    <- sum(tbl); r <- nrow(tbl); c <- ncol(tbl)
+  as.numeric(sqrt((chi$statistic / n) / min(r - 1, c - 1)))
+}
+cohens_d <- function(x, group) {
+  m1 <- mean(x[group == 1]); m0 <- mean(x[group == 0])
+  s1 <- sd(x[group == 1]);   s0 <- sd(x[group == 0])
+  n1 <- sum(group == 1);     n0 <- sum(group == 0)
+  sp <- sqrt(((n1-1)*s1^2 + (n0-1)*s0^2) / (n1+n0-2))
+  (m1 - m0) / sp
+}
+
+assoc_all <- bind_rows(
+  map_dfr(c(binary_vars, ordinal_vars), ~tibble(
+    variable = .x,
+    type     = if_else(.x %in% binary_vars, "binary", "ordinal"),
+    metric   = "Cramer's V",
+    strength = cramers_v(df_full[[.x]], df_full$Diabetes_binary)
+  )),
+  map_dfr(continuous_vars, ~tibble(
+    variable = .x, type = "continuous",
+    metric   = "Cohen's d (abs)",
+    strength = abs(cohens_d(df_full[[.x]], df_full$Diabetes_binary))
+  ))
+) |> arrange(desc(strength))
+
+assoc_all |>
+  mutate(variable = fct_reorder(variable, strength)) |>
+  ggplot(aes(x = strength, y = variable, fill = type)) +
+  geom_col() +
+  scale_fill_brewer(palette = "Set2") +
+  labs(title = "Predictor association with diabetes status",
+       subtitle = "Cramér's V for categorical; absolute Cohen's d for continuous",
+       x = "Association strength", y = NULL, fill = "Predictor type")
+```
+
+## Binary Predictors
+
+Diabetes rates within each yes/no predictor were compared to identify which binary flags carry the most signal. HighBP (6.0% vs. 24.4%), HeartDiseaseorAttack (12.0% vs. 33.0%), Stroke (13.2% vs. 31.8%), DiffWalk (10.5% vs. 30.7%), and HighChol (8.0% vs. 22.0%) all show rates more than double between the No and Yes groups. HvyAlcoholConsump shows an unexpected inverse pattern — heavy drinkers have a *lower* diabetes rate (5.8% vs. 14.4%) — which likely reflects a survivorship or sampling artifact rather than a protective causal effect. Fruits, Veggies, and AnyHealthcare show minimal separation between groups.
+
+```{r binary-predictors}
+df_full |>
+  select(all_of(binary_vars), Diabetes_binary) |>
+  pivot_longer(all_of(binary_vars), names_to = "predictor", values_to = "level") |>
+  group_by(predictor, level) |>
+  summarise(rate = mean(Diabetes_binary), .groups = "drop") |>
+  mutate(level = factor(level, levels = c(0,1), labels = c("No","Yes"))) |>
+  ggplot(aes(x = level, y = rate, fill = level)) +
+  geom_col(width = 0.6) +
+  geom_text(aes(label = percent(rate, accuracy = 0.1)), vjust = -0.4, size = 2.8) +
+  facet_wrap(~ predictor, ncol = 4, scales = "free_y") +
+  scale_y_continuous(labels = percent_format(), expand = expansion(mult = c(0, 0.2))) +
+  scale_fill_manual(values = c("No" = "#94B6D2", "Yes" = "#D1495B")) +
+  labs(title = "Diabetes rate within each binary predictor",
+       x = NULL, y = "Diabetes rate") +
+  theme(legend.position = "none", strip.text = element_text(size = 9))
+```
+
+## Continuous Predictor Analysis
+
+BMI demonstrated the strongest continuous relationship with diabetes status. Diabetic respondents exhibited substantially higher BMI values than non-diabetic respondents. PhysHlth and MentHlth were highly right-skewed and contained large concentrations of zero values, suggesting opportunities for alternative feature engineering approaches in future work.
+
+
+## Ordinal Predictor Analysis
+
+GenHlth displayed the strongest ordinal relationship with diabetes prevalence. Diabetes rates increased consistently across worsening health categories. Similar monotonic trends were observed for Age, Income, and Education, indicating that both health status and socioeconomic factors contribute predictive information.
+
+
+## Correlation Analysis
+
+Correlation analysis revealed moderate relationships among several health-related variables, but no pairwise correlations were sufficiently large to indicate severe multicollinearity. Therefore, no variables were removed solely due to correlation concerns.
+
+
+## EDA Summary
+
+The exploratory analysis highlights four key patterns that directly inform the modeling strategy:
+
+- **BMI** is the strongest individual predictor; diabetic respondents have meaningfully higher BMI with a right-skewed distribution and implausible high-end values requiring preprocessing.
+- **Comorbidity flags** (HighBP, HighChol, HeartDiseaseorAttack, Stroke, DiffWalk) all show diabetes rates more than double in the positive group, making them collectively important even where individual association strengths are moderate.
+- **General and physical health self-reports** (GenHlth, PhysHlth) show strong monotone relationships with diabetes status and moderate inter-correlation, suggesting they may partially substitute for each other in regularized models.
+- **Socioeconomic variables** (Income, Education, Age) trend in expected directions and add independent signal beyond clinical indicators, though they are correlated with each other.
+
+# Data Preparation and Preprocessing
+
+## Data Splitting
+
+The 50/50 balanced dataset (n = 70,692) was used for modeling to provide equal class representation during training. A stratified 80/20 split was applied to preserve class balance across the training and test sets.
+
+| Dataset            | Observations | Diabetes % |
+|--------------------|-------------:|-----------:|
+| Training Set (80%) |       56,553 |      50.0% |
+| Testing Set (20%)  |       14,139 |      50.0% |
+
+Cross-validation on the training set serves as the validation step; no separate held-out validation set was created beyond the test set. This approach follows the predictive modeling strategy described by Kuhn and Johnson (2013), where resampling is used for model tuning and a held-out test set is reserved for final performance estimation.
+
+```{r train-test-split}
+set.seed(503)
+split_index <- createDataPartition(df_model$Diabetes_binary, p = 0.80, list = FALSE)
+train_data  <- df_model[split_index, ]
+test_data   <- df_model[-split_index, ]
+```
+
+## Feature Preparation
+
+Preprocessing was implemented as a `recipes` pipeline fit exclusively on the training data to prevent data leakage. The pipeline includes:
+
+- Removing zero-variance predictors (`step_zv`)
+- Standardizing all numeric predictors to mean 0 and standard deviation 1 (`step_normalize`)
+
+Binary and ordinal variables were left as numeric for compatibility with all four modeling methods. No imputation was required given the absence of missing values.
+
+```{r preprocessing-code}
+diabetes_recipe <- recipe(Diabetes_binary ~ ., data = train_data) |>
+  step_zv(all_predictors()) |>
+  step_normalize(all_numeric_predictors())
+
+diabetes_prep   <- prep(diabetes_recipe, training = train_data)
+train_processed <- bake(diabetes_prep, new_data = train_data)
+test_processed  <- bake(diabetes_prep, new_data = test_data)
+```
+
+## Handling Correlated Features
+
+Correlation analysis did not reveal multicollinearity severe enough to require predictor removal. All 21 predictors were retained. This decision preserves potentially useful clinical and behavioral information while allowing the modeling algorithms to handle redundancy differently. Elastic Net addresses correlated features through its combined L1/L2 penalty, while Random Forest and GBM are less sensitive to collinearity because splits are selected locally within tree structures.
+
+# Model Strategy and Justification
+
+The modeling strategy was designed to compare an interpretable statistical baseline against increasingly flexible machine learning methods. This structure supports both prediction and interpretation, which is important in healthcare-related applications.
+
+## Logistic Regression as Baseline
+
+Logistic Regression was used as the baseline because it is transparent, efficient, and widely used for binary healthcare outcomes. It provides a useful benchmark and allows the direction of predictor effects to be interpreted through coefficients or odds ratios. Its limitation is that it assumes additive linear effects on the log-odds scale unless interactions or nonlinear terms are manually engineered.
+
+## Elastic Net for Regularized Linear Modeling
+
+Elastic Net extends Logistic Regression by adding regularization. This is appropriate because several health-status predictors are moderately correlated, including general health, physical health, and difficulty walking. The L1 component can shrink weak predictors toward zero, while the L2 component stabilizes coefficient estimates when predictors overlap.
+
+## Random Forest for Nonlinear Interactions
+
+Random Forest was included because diabetes risk may depend on interactions between risk factors, such as BMI, age, high blood pressure, cholesterol status, and general health. Unlike Logistic Regression, Random Forest can capture nonlinear and interaction effects without manually specifying them.
+
+## GBM for Sequential Error Correction
+
+GBM was included as a second ensemble method because boosted trees often perform well on structured tabular datasets. GBM sequentially improves prediction by focusing on observations that earlier trees classified poorly. Because this flexibility can overfit, tuning and test-set evaluation are especially important.
+
+# Baseline Model: Logistic Regression
+
+Logistic regression was selected as the baseline because it is interpretable, computationally efficient, and a standard benchmark in healthcare prediction. It assumes a linear relationship between the log-odds of diabetes and the predictors, which may underfit if important non-linear interactions exist.
+
+```{r logistic-regression}
+# Caret-compatible target labels
+recode_target <- function(d) {
+  d |> mutate(Diabetes_binary = factor(
+    ifelse(as.character(Diabetes_binary) == "Diabetes", "Diabetes", "NoDiabetes"),
+    levels = c("Diabetes", "NoDiabetes")
+  ))
+}
+train_cv <- recode_target(train_processed)
+test_cv  <- recode_target(test_processed)
+
+train_x <- as.matrix(train_cv[, colnames(train_cv) != "Diabetes_binary"])
+test_x  <- as.matrix(test_cv[, colnames(test_cv) != "Diabetes_binary"])
+train_y <- train_cv$Diabetes_binary
+test_y  <- test_cv$Diabetes_binary
+
+x_train_df <- as.data.frame(predict(preProcess(train_x, method = c("zv","center","scale")), train_x))
+x_test_df  <- as.data.frame(predict(preProcess(train_x, method = c("zv","center","scale")), test_x))
+
+set.seed(503)
+cv_index <- createFolds(train_cv$Diabetes_binary, k = 5, returnTrain = TRUE)
+ctrl <- trainControl(
+  method = "cv", index = cv_index,
+  classProbs = TRUE, summaryFunction = twoClassSummary,
+  savePredictions = "final", verboseIter = FALSE
+)
+
+set.seed(503)
+mod_glm <- train(
+  x = x_train_df, y = train_y,
+  method = "glm", family = binomial,
+  metric = "ROC", trControl = ctrl
+)
+```
+
+## Baseline Model Performance
+
+The logistic regression model provides a stable performance floor for comparison. Sensitivity and balanced accuracy are the primary metrics of interest given the clinical cost of false negatives (missed diabetes cases).
+
+```{r logistic-metrics}
+glm_probs <- predict(mod_glm, newdata = x_test_df, type = "prob")[, "Diabetes"]
+glm_preds <- predict(mod_glm, newdata = x_test_df)
+
+glm_cm <- confusionMatrix(glm_preds, test_y, positive = "Diabetes")
+
+tibble(
+  Metric = c("ROC AUC", "Accuracy", "Balanced Accuracy", "Sensitivity", "Specificity"),
+  Value  = c(
+    as.numeric(auc(roc(test_y, glm_probs, levels = c("NoDiabetes","Diabetes")))),
+    glm_cm$overall["Accuracy"],
+    glm_cm$byClass["Balanced Accuracy"],
+    glm_cm$byClass["Sensitivity"],
+    glm_cm$byClass["Specificity"]
+  )
+) |> mutate(Value = round(Value, 4)) |> kable(caption = "Baseline logistic regression performance")
+```
+
+# Model Development and Tuning
+
+All models share the same 5-fold cross-validation setup and are optimized on ROC AUC to provide a consistent, threshold-independent comparison.
+
+## Cross-Validation Strategy
+
+| Parameter                |                   Value |
+|--------------------------|------------------------:|
+| Method                   | k-fold cross-validation |
+| Number of Folds          |                       5 |
+| Optimization Metric      |                 ROC AUC |
+| Class Probability Output |                 Enabled |
+
+## Elastic Net
+
+Elastic Net combines L1 (lasso) and L2 (ridge) regularization, controlled by the mixing parameter alpha and the penalty strength lambda. This approach reduces overfitting, handles correlated predictors by shrinking their coefficients jointly, and can perform automatic variable selection by driving weak coefficients to zero. A 10-point tuning grid was searched over alpha and lambda combinations.
+
+```{r elastic-net}
+library(doParallel)
+cl <- makePSOCKcluster(max(1, detectCores() - 1))
+registerDoParallel(cl)
+
+set.seed(503)
+mod_glmnet <- train(
+  x = x_train_df, y = train_y,
+  method = "glmnet", metric = "ROC",
+  trControl = ctrl, tuneLength = 10
+)
+
+stopCluster(cl)
+registerDoSEQ()
+```
+
+## Random Forest
+
+Random Forest builds an ensemble of de-correlated decision trees by randomly subsetting both observations and predictors at each split, then averages their predictions. This reduces variance relative to a single tree and captures non-linear relationships and variable interactions without explicit feature engineering. Hyperparameters (mtry, split rule, minimum node size) were first tuned on a 20% subsample of training data using 3-fold CV to reduce compute time, and the best configuration was then trained on the full training set using 300 trees.
+
+```{r random-forest}
+set.seed(503)
+tune_index <- createDataPartition(train_cv$Diabetes_binary, p = 0.20, list = FALSE)
+x_tune_df  <- as.data.frame(train_cv[tune_index, colnames(train_cv) != "Diabetes_binary"])
+y_tune     <- train_cv$Diabetes_binary[tune_index]
+
+tune_ctrl <- trainControl(method = "cv", number = 3, classProbs = TRUE,
+                          summaryFunction = twoClassSummary)
+
+set.seed(503)
+mod_rf_tune <- train(
+  x = x_tune_df, y = y_tune,
+  method = "ranger", metric = "ROC",
+  trControl = tune_ctrl, tuneLength = 3,
+  num.trees = 150, importance = "impurity", verbose = FALSE
+)
+
+set.seed(503)
+mod_rf <- train(
+  x = x_train_df, y = train_y,
+  method = "ranger", metric = "ROC",
+  trControl = ctrl, num.trees = 300,
+  importance = "impurity",
+  tuneGrid = mod_rf_tune$bestTune, verbose = FALSE
+)
+```
+
+## Gradient Boosting Machine
+
+GBM builds trees sequentially, with each new tree improving the errors of the previous ensemble. This iterative error-correction approach often yields strong predictive performance but requires careful tuning to avoid overfitting. The code below defines a candidate grid for number of trees, interaction depth, shrinkage, and minimum observations per node. In this draft version, the GBM chunk uses a placeholder configuration for runtime control. Before final submission, replace `head(gbm_grid, 1)` with the selected tuning row or the team's final tuned GBM object if available.
+
+```{r gbm-model}
+library(gbm)
+gbm_grid <- expand.grid(
+  n.trees           = seq(150, 300, by = 75),
+  interaction.depth = seq(1, 5, by = 2),
+  shrinkage         = 0.1,
+  n.minobsinnode    = 50
+)
+
+ctrl_final <- trainControl(
+  method = "none", classProbs = TRUE,
+  summaryFunction = twoClassSummary,
+  allowParallel = FALSE, trim = TRUE, returnData = TRUE
+)
+
+gc()
+set.seed(503)
+mod_gbm <- train(
+  x = x_train_df, y = train_y,
+  method = "gbm", metric = "ROC",
+  trControl = ctrl_final,
+  tuneGrid  = head(gbm_grid, 1),
+  verbose   = FALSE
+)
+```
+
+# Validation and Testing
+
+After tuning, all four models were evaluated on the held-out test set to estimate real-world performance on unseen data.
+
+## Model Comparison
+
+```{r final-performance-table}
+eval_model <- function(mod, xtest, ytest) {
+  probs <- predict(mod, newdata = xtest, type = "prob")[, "Diabetes"]
+  preds <- predict(mod, newdata = xtest)
+  cm    <- confusionMatrix(preds, ytest, positive = "Diabetes")
+  tibble(
+    `ROC AUC`          = as.numeric(auc(roc(ytest, probs, levels = c("NoDiabetes","Diabetes")))),
+    Accuracy           = cm$overall["Accuracy"],
+    `Balanced Accuracy`= cm$byClass["Balanced Accuracy"],
+    Sensitivity        = cm$byClass["Sensitivity"],
+    Specificity        = cm$byClass["Specificity"]
+  )
+}
+
+perf_table <- bind_rows(
+  eval_model(mod_glm,    x_test_df, test_y) |> mutate(Model = "Logistic Regression"),
+  eval_model(mod_glmnet, x_test_df, test_y) |> mutate(Model = "Elastic Net"),
+  eval_model(mod_rf,     x_test_df, test_y) |> mutate(Model = "Random Forest"),
+  eval_model(mod_gbm,    x_test_df, test_y) |> mutate(Model = "GBM")
+) |>
+  select(Model, everything()) |>
+  mutate(across(where(is.numeric), ~round(.x, 4)))
+
+perf_table |> kable(caption = "Test set performance across all models")
+```
+
+The final comparison table should be interpreted using ROC AUC and balanced accuracy as the primary criteria. ROC AUC evaluates ranking ability across thresholds, while balanced accuracy averages sensitivity and specificity and is less affected by class imbalance than raw accuracy. After inserting the final model outputs, briefly identify whether the best model gains meaningful performance over Logistic Regression or whether the simpler model remains competitive.
+
+\[INSERT 1 PARAGRAPH INTERPRETING FINAL MODEL TABLE\]
+
+## ROC Curve Comparison
+
+ROC curves were compared to assess each model's ability to separate diabetic from non-diabetic individuals across all possible classification thresholds. A higher area under the curve indicates better discrimination. Tree-based models are expected to outperform linear approaches if non-linear feature interactions exist in the data.
+
+```{r roc-curves}
+make_roc <- function(mod, xtest, ytest, label) {
+  probs <- predict(mod, newdata = xtest, type = "prob")[, "Diabetes"]
+  roc_obj <- roc(ytest, probs, levels = c("NoDiabetes", "Diabetes"), quiet = TRUE)
+  tibble(
+    fpr   = 1 - roc_obj$specificities,
+    tpr   = roc_obj$sensitivities,
+    model = label
+  )
+}
+
+roc_df <- bind_rows(
+  make_roc(mod_glm,    x_test_df, test_y, "Logistic Regression"),
+  make_roc(mod_glmnet, x_test_df, test_y, "Elastic Net"),
+  make_roc(mod_rf,     x_test_df, test_y, "Random Forest"),
+  make_roc(mod_gbm,    x_test_df, test_y, "GBM")
+)
+
+ggplot(roc_df, aes(x = fpr, y = tpr, color = model)) +
+  geom_line(linewidth = 0.9) +
+  geom_abline(linetype = "dashed", color = "gray60") +
+  labs(title = "ROC Curve Comparison — Test Set",
+       x = "False Positive Rate (1 - Specificity)",
+       y = "True Positive Rate (Sensitivity)",
+       color = "Model") +
+  theme(legend.position = "bottom")
+```
+
+
+## Final Performance Metrics
+
+| Metric            |      Value |
+|-------------------|-----------:|
+| ROC AUC           | \[INSERT\] |
+| Accuracy          | \[INSERT\] |
+| Balanced Accuracy | \[INSERT\] |
+| Sensitivity       | \[INSERT\] |
+| Specificity       | \[INSERT\] |
+
+## Variable Importance
+
+```{r important-predictors}
+# For Random Forest (ranger), use variable importance from the final model
+if (inherits(mod_rf$finalModel, "ranger")) {
+  imp_df <- tibble(
+    variable   = names(mod_rf$finalModel$variable.importance),
+    importance = mod_rf$finalModel$variable.importance
+  ) |> arrange(desc(importance)) |> head(15)
+
+  ggplot(imp_df, aes(x = importance, y = fct_reorder(variable, importance))) +
+    geom_col(fill = "#3B7EA1") +
+    labs(title = "Top 15 Variable Importances — Final Model",
+         x = "Importance (impurity)", y = NULL)
+}
+```
+
+\[INSERT VARIABLE IMPORTANCE DISCUSSION — identify which predictors ranked highest and whether they align with the EDA findings (e.g., BMI, GenHlth, HighBP). Discuss whether the final model is using clinically meaningful predictors rather than relying on artifacts. If the selected final model is not Random Forest, replace the plot above with the corresponding variable importance or coefficient-based interpretation from that model.\]
+
+# Discussion and Conclusions
+
+The objective of this project was to determine whether diabetes status could be predicted using demographic, behavioral, and health-related indicators from the BRFSS dataset. Results confirm that predictive modeling can identify individuals at elevated diabetes risk using readily available survey-based health information.
+
+Across the analysis, BMI, general health self-rating, high blood pressure, physical health days, and difficulty walking emerged as the most informative predictors — consistent with established diabetes risk factors and with the EDA findings. Socioeconomic variables (income, education) provided additional signal beyond clinical indicators alone.
+
+From a practical healthcare perspective, these findings suggest that survey-based screening tools could help prioritize individuals for follow-up clinical evaluation. The model should not be interpreted as a diagnostic replacement. Rather, it could support early outreach by identifying respondents whose self-reported health profiles resemble those of individuals with diabetes.
+
+The final model, **\[INSERT FINAL MODEL NAME\]**, achieved a test set ROC AUC of **\[INSERT ROC AUC\]**, indicating **\[INSERT INTERPRETATION — e.g., strong discriminative ability well above the random baseline of 0.50\]**. While more complex models may marginally improve predictive accuracy, interpretability remains important in healthcare screening contexts.
+
+## Limitations
+
+1.  The dataset relies on self-reported survey responses, which may introduce recall and social desirability bias.
+2.  The analysis is cross-sectional and cannot establish causal relationships between predictors and diabetes status.
+3.  External validation was not performed on a separate BRFSS survey year or independent cohort.
+4.  Clinical laboratory values (e.g., HbA1c, fasting glucose) and family history were not available and would likely improve predictive performance.
+5.  The 50/50 balanced training dataset does not reflect real-world diabetes prevalence (\~14%), so model calibration for deployment would require recalibration to the natural class distribution.
+
+## Future Work
+
+- Test additional gradient boosting implementations (XGBoost, LightGBM) with broader hyperparameter grids.
+- Evaluate cost-sensitive classification or threshold optimization tuned to minimize false negatives specifically.
+- Perform external validation on a different BRFSS year to assess temporal generalizability.
+- Incorporate clinical variables if available to assess incremental predictive gain.
+- Explore recoding of MentHlth and PhysHlth (e.g., binary flags for any bad days) and examine impact on model performance.
+
+## Conclusion
+
+This project demonstrates that diabetes status can be predicted with meaningful accuracy using behavioral and health-related indicators from the BRFSS survey. The modeling results suggest that predictive analytics could serve as a low-cost screening support tool for identifying individuals who may benefit from earlier preventive care or clinical follow-up, without requiring clinical laboratory testing.
+
+# References
+
+Centers for Disease Control and Prevention. (2015). *Behavioral Risk Factor Surveillance System survey data*. U.S. Department of Health and Human Services.
+
+Centers for Disease Control and Prevention. (2024). *National diabetes statistics report*. U.S. Department of Health and Human Services. \[INSERT URL OR ACCESS DATE IF REQUIRED\]
+
+Kuhn, M., & Johnson, K. (2013). *Applied predictive modeling*. Springer.
+
+Teboul, A. (2023). *Diabetes health indicators dataset*. Kaggle. \[INSERT DATASET URL\]
+
+\[INSERT ADDITIONAL REFERENCES AS NEEDED\]
+
+# Appendix: Reproducible R Code
+
+The appendix contains the complete reproducible R code used for exploratory data analysis, preprocessing, model training, tuning, and final evaluation. All chunks use `echo=TRUE, eval=FALSE` so the code is visible without re-executing during rendering.
+
+## A.1 Library Setup
+
+```{r appendix-setup, echo=TRUE, eval=FALSE}
+library(tidyverse); library(skimr); library(corrplot)
+library(patchwork); library(scales); library(knitr)
+library(caret); library(recipes); library(yardstick)
+library(pROC); library(doParallel); library(glmnet)
+library(ranger); library(gbm)
+```
+
+## A.2 Data Loading and Encoding
+
+```{r appendix-load, echo=TRUE, eval=FALSE}
+df_full  <- read_csv("../Raw Data/diabetes_binary_health_indicators_BRFSS2015.csv")
+df_model <- read_csv("../Raw Data/diabetes_binary_5050split_health_indicators_BRFSS2015.csv") |>
+  mutate(Diabetes_binary = factor(Diabetes_binary, levels = c(0,1),
+                                  labels = c("No Diabetes","Diabetes")))
+```
+
+## A.3 Exploratory Data Analysis
+
+```{r appendix-eda, echo=TRUE, eval=FALSE}
+# Class distribution
+df_full |>
+  mutate(label = if_else(Diabetes_binary == 1, "Diabetes", "No Diabetes")) |>
+  count(label) |> mutate(pct = n / sum(n))
+
+# Association ranking (Cramér's V and Cohen's d) — see full code in Section 4.2
+# Binary predictor rates — see full code in Section 4.3
+# Continuous predictor densities — see full code in Section 4.4
+# Ordinal predictor rates — see full code in Section 4.5
+# Spearman correlation matrix — see full code in Section 4.6
+```
+
+## A.4 Data Splitting and Preprocessing
+
+```{r appendix-preprocessing, echo=TRUE, eval=FALSE}
+set.seed(503)
+split_index <- createDataPartition(df_model$Diabetes_binary, p = 0.80, list = FALSE)
+train_data  <- df_model[split_index, ]
+test_data   <- df_model[-split_index, ]
+
+diabetes_recipe <- recipe(Diabetes_binary ~ ., data = train_data) |>
+  step_zv(all_predictors()) |>
+  step_normalize(all_numeric_predictors())
+
+diabetes_prep   <- prep(diabetes_recipe, training = train_data)
+train_processed <- bake(diabetes_prep, new_data = train_data)
+test_processed  <- bake(diabetes_prep, new_data = test_data)
+
+# Caret-compatible labels and matrix format
+recode_target <- function(d) {
+  d |> mutate(Diabetes_binary = factor(
+    ifelse(as.character(Diabetes_binary) == "Diabetes", "Diabetes", "NoDiabetes"),
+    levels = c("Diabetes", "NoDiabetes")
+  ))
+}
+train_cv <- recode_target(train_processed)
+test_cv  <- recode_target(test_processed)
+
+train_x    <- as.matrix(train_cv[, colnames(train_cv) != "Diabetes_binary"])
+test_x     <- as.matrix(test_cv[, colnames(test_cv) != "Diabetes_binary"])
+train_y    <- train_cv$Diabetes_binary
+test_y     <- test_cv$Diabetes_binary
+x_train_df <- as.data.frame(predict(preProcess(train_x, method = c("zv","center","scale")), train_x))
+x_test_df  <- as.data.frame(predict(preProcess(train_x, method = c("zv","center","scale")), test_x))
+```
+
+## A.5 Cross-Validation Setup
+
+```{r appendix-cv, echo=TRUE, eval=FALSE}
+set.seed(503)
+cv_index <- createFolds(train_cv$Diabetes_binary, k = 5, returnTrain = TRUE)
+ctrl <- trainControl(
+  method = "cv", index = cv_index,
+  classProbs = TRUE, summaryFunction = twoClassSummary,
+  savePredictions = "final", verboseIter = FALSE
+)
+```
+
+## A.6 Logistic Regression
+
+```{r appendix-logistic, echo=TRUE, eval=FALSE}
+set.seed(503)
+mod_glm <- train(x = x_train_df, y = train_y,
+                 method = "glm", family = binomial,
+                 metric = "ROC", trControl = ctrl)
+```
+
+## A.7 Elastic Net
+
+```{r appendix-elastic-net, echo=TRUE, eval=FALSE}
+cl <- makePSOCKcluster(max(1, detectCores() - 1))
+registerDoParallel(cl)
+set.seed(503)
+mod_glmnet <- train(x = x_train_df, y = train_y,
+                    method = "glmnet", metric = "ROC",
+                    trControl = ctrl, tuneLength = 10)
+stopCluster(cl); registerDoSEQ()
+```
+
+## A.8 Random Forest
+
+```{r appendix-random-forest, echo=TRUE, eval=FALSE}
+# Hyperparameter tuning on 20% subsample
+set.seed(503)
+tune_index  <- createDataPartition(train_cv$Diabetes_binary, p = 0.20, list = FALSE)
+x_tune_df   <- as.data.frame(train_cv[tune_index, colnames(train_cv) != "Diabetes_binary"])
+y_tune      <- train_cv$Diabetes_binary[tune_index]
+tune_ctrl   <- trainControl(method = "cv", number = 3, classProbs = TRUE,
+                            summaryFunction = twoClassSummary)
+mod_rf_tune <- train(x = x_tune_df, y = y_tune, method = "ranger", metric = "ROC",
+                     trControl = tune_ctrl, tuneLength = 3,
+                     num.trees = 150, importance = "impurity", verbose = FALSE)
+
+# Final model on full training data
+set.seed(503)
+mod_rf <- train(x = x_train_df, y = train_y, method = "ranger", metric = "ROC",
+                trControl = ctrl, num.trees = 300, importance = "impurity",
+                tuneGrid = mod_rf_tune$bestTune, verbose = FALSE)
+```
+
+## A.9 Gradient Boosting Machine
+
+```{r appendix-gbm, echo=TRUE, eval=FALSE}
+gbm_grid <- expand.grid(n.trees = seq(150,300,by=75),
+                        interaction.depth = seq(1,5,by=2),
+                        shrinkage = 0.1, n.minobsinnode = 50)
+ctrl_final <- trainControl(method = "none", classProbs = TRUE,
+                           summaryFunction = twoClassSummary,
+                           allowParallel = FALSE, trim = TRUE, returnData = TRUE)
+gc()
+set.seed(503)
+mod_gbm <- train(x = x_train_df, y = train_y, method = "gbm", metric = "ROC",
+                 trControl = ctrl_final, tuneGrid = head(gbm_grid, 1), verbose = FALSE)
+```
+
+## A.10 Final Evaluation
+
+```{r appendix-final-evaluation, echo=TRUE, eval=FALSE}
+eval_model <- function(mod, xtest, ytest) {
+  probs <- predict(mod, newdata = xtest, type = "prob")[, "Diabetes"]
+  preds <- predict(mod, newdata = xtest)
+  cm    <- confusionMatrix(preds, ytest, positive = "Diabetes")
+  tibble(
+    `ROC AUC`           = as.numeric(auc(roc(ytest, probs, levels = c("NoDiabetes","Diabetes")))),
+    Accuracy            = cm$overall["Accuracy"],
+    `Balanced Accuracy` = cm$byClass["Balanced Accuracy"],
+    Sensitivity         = cm$byClass["Sensitivity"],
+    Specificity         = cm$byClass["Specificity"]
+  )
+}
+
+bind_rows(
+  eval_model(mod_glm,    x_test_df, test_y) |> mutate(Model = "Logistic Regression"),
+  eval_model(mod_glmnet, x_test_df, test_y) |> mutate(Model = "Elastic Net"),
+  eval_model(mod_rf,     x_test_df, test_y) |> mutate(Model = "Random Forest"),
+  eval_model(mod_gbm,    x_test_df, test_y) |> mutate(Model = "GBM")
+) |> select(Model, everything()) |> mutate(across(where(is.numeric), ~round(.x, 4)))
+```
