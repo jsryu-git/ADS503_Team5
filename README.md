@@ -92,7 +92,8 @@ Models were evaluated using:
 •	Cross-validation performance
 
 ### Repository Structure  
-ADS503_Team5/  
+```text
+ADS503_Team5/
 │
 ├── Data/
 │   ├── Raw Data/
@@ -104,10 +105,10 @@ ADS503_Team5/
 ├── Final_Report_Team5.qmd
 │
 ├── Presentation/
-│
 ├── Figures/
 │
 └── README.md
+```
 
 ### Technologies  
 * R  
