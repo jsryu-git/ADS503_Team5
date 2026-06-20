@@ -37,6 +37,7 @@ dm_palette <- c("No Diabetes" = "#4C9F70", "Diabetes" = "#D1495B")
 
 ```
 
+PreProcessing from Model Training Portion
 ```{r}
 setwd(r"(C:\Users\User\ADS503_Team5\Raw Data)")
 if (!exists("train_processed") || !exists("test_processed")) {
@@ -87,6 +88,8 @@ ctrl <- trainControl(
 )
 #Following the same pre-processing workflow as MT Portion.qmd
 ```
+
+Training data for model tuning
 ```{r}
 # gemini suggested separating these into x and y matrices, removing class name Diabetes_binary from x to prevent data leakage
 train_x <- as.matrix(train_cv[, colnames(train_cv) != "Diabetes_binary"])
@@ -226,7 +229,7 @@ gbm_grid <- expand.grid(
 )
 gbm_bestHP <- gbm_grid
 ```
-
+Final model, GBM, hyperparameter tuning
 ```{r}
 #| include: false
 foreach::registerDoSEQ() #suggested by Gemini to stop freezing
@@ -235,15 +238,6 @@ foreach::registerDoSEQ() #suggested by Gemini to stop freezing
 # Extract ONLY the single best row of hyper parameters for the tuning grid, suggested by Gemini to decrease runtime
 final_hyperparams <- if(is.data.frame(gbm_bestHP)) head(gbm_bestHP, 1) else gbm_bestHP #The optimized row of hyper parameters
 
-#eliminate re-sampling for the final model
-ctrl_final <- trainControl(
-  method          = "none",          #scrapping the cross validation, suggested by gemini
-  classProbs      = TRUE,
-  summaryFunction = twoClassSummary,
-  allowParallel   = FALSE,
-  trim            = TRUE,            # trimming unnecessary data, suggested by gemini
-  returnData      = TRUE          
-)
 # Clear the memory cache before launching, suggested by gemini
 gc()
 
@@ -254,7 +248,7 @@ mod_gbm <- train(
   y         = train_y,
   method    = "gbm",
   metric    = "ROC", 
-  trControl = ctrl_final, 
+  trControl = ctrl, 
   tuneGrid  = final_hyperparams,     # Passed exactly 1 row for the optimized hyper parameters, suggested by Gemini
   verbose   = FALSE
 )
@@ -263,7 +257,7 @@ mod_gbm <- train(
 best_gbm <- mod_gbm$finalModel
 
 ```
-
+Exporting the models to model_evaulation
 ```{r export-workspace}
 # Set working directory to ensure it saves to a project data folder
 setwd(r"(C:\Users\User\ADS503_Team5\Raw Data)")

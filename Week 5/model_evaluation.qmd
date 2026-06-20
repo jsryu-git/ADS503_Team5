@@ -1,0 +1,193 @@
+---
+title: "Model Evaluation"
+subtitle: "ADS 503 Final Team Project - Diabetes Health Indicators (BRFSS 2015)"
+author: "Vince Garcia"
+date: today
+format:
+  html:
+    toc: true
+    toc-depth: 3
+    code-fold: show
+    code-tools: true
+    df-print: paged
+    embed-resources: true
+  pdf:
+    toc: true
+    number-sections: true
+execute:
+  warning: false
+  message: false
+  echo: true
+---
+Libraries
+```{r setup}
+library(tidyverse)
+library(caret)
+library(recipes)
+library(pROC)
+library(scales)
+library(doParallel)
+library(glmnet)
+library(ggplot2)
+library(ranger)
+library(gbm)
+library(PRROC) # Explicitly loaded for Precision-Recall evaluation metrics
+
+set.seed(503)
+dm_palette <- c("No Diabetes" = "#4C9F70", "Diabetes" = "#D1495B")
+
+```
+Importing from Model Tuning
+```{r rebuild-data}
+
+setwd(r"(C:\Users\User\ADS503_Team5\Raw Data)")
+
+
+load("tuned_models_and_data.RData")
+#source: https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/load
+
+```
+
+ROC Curve Construction
+```{r}
+#Source: Robin (2026). Package 'pROC'. 
+#Link:  https://xrobin.github.io/pROC/
+prob_lda <- predict(mod_glm, x_test_processed, type = "prob")[["Diabetes"]] #gemini suggested [["Diabetes"]] subset when calling predict()
+prob_enet <- predict(mod_glmnet, x_test_processed, type = "prob")[["Diabetes"]] #gemini suggested [["Diabetes"]] subset when calling predict()
+prob_rf    <- predict(mod_rf, x_test_df, type = "prob")[["Diabetes"]]
+#gemini suggested [["Diabetes"]] subset when calling predict()
+prob_gbm    <- predict(mod_gbm, x_test_df, type = "prob")[["Diabetes"]]
+#gemini suggested [["Diabetes"]] subset when calling predict()
+
+
+
+
+roc_lda  <- roc(test_y, prob_lda, levels = c("NoDiabetes", "Diabetes"), quiet = TRUE)
+roc_enet    <- roc(test_y, prob_enet, levels = c("NoDiabetes", "Diabetes"), quiet = TRUE)
+roc_rf  <- roc(test_y, prob_rf, levels = c("NoDiabetes", "Diabetes"), quiet = TRUE)
+roc_gbm     <- roc(test_y, prob_gbm, levels = c("NoDiabetes", "Diabetes"), quiet = TRUE)
+```
+
+Delong Test Results for model ROC Curves
+```{r}
+# Execute statistical comparison of holdout curves
+#LDA Vs. Elastic Net
+delong_result <- roc.test(roc_lda, roc_enet, method = "delong")
+print(delong_result)
+#Random Forest vs. GBM
+delong_result2 <- roc.test(roc_rf, roc_gbm,method = "delong")
+print(delong_result2)
+#LDA versus GBM
+delong_result3 <- roc.test(roc_lda, roc_gbm,method = "delong")
+print(delong_result3)
+#Random Forest versus LDA
+delong_result4 <- roc.test(roc_rf, roc_lda,method = "delong")
+print(delong_result4)
+#Random Forest versus Elastic Net
+delong_result5 <- roc.test(roc_rf, roc_enet,method = "delong")
+print(delong_result5)
+```
+Judging by the results of the Delong's tests, most of the models remain statistically indistinguishable from each other except for LDA and GBM, where the p value of that test is 0.002433. GBM outperforms LDA significantly. 
+
+
+
+ROC Comparison
+```{r}
+##Source: Robin (2026). Package 'pROC'. 
+#Link:  https://xrobin.github.io/pROC/
+# Build individual ROC objects first
+r_lda   <- roc(test_y, prob_lda,   levels = c("NoDiabetes", "Diabetes"), quiet = TRUE)
+r_enet <- roc(test_y, prob_enet, levels = c("NoDiabetes", "Diabetes"), quiet = TRUE)
+r_rf    <- roc(test_y, prob_rf,    levels = c("NoDiabetes", "Diabetes"), quiet = TRUE)
+r_gbm   <- roc(test_y, prob_gbm,   levels = c("NoDiabetes", "Diabetes"), quiet = TRUE)
+
+# Put them in a named list
+#suggested by Gemini:
+roc_list <- list(LDA = r_lda, ElasticNet = r_enet, RandomForest = r_rf, GBM = r_gbm)
+
+# Plot all curves simultaneously with ggplot2
+#source : https://www.rdocumentation.org/packages/ggROC/versions/1.0/topics/ggroc
+ggroc(roc_list, aes = "color", linewidth = 1, alpha = 0.9) +
+  theme_minimal() +
+  labs(title = "ROC Comparison Across Models", color = "Algorithm", x = "1- Specificity (%)", y = "Sensitivity (&)")
+```
+Probability Calibration Assessment
+```{r}
+# Create a dedicated dataframe for calibration
+calibration_df <- data.frame(
+  obs        = test_y,
+  LDA        = prob_lda,
+  ElasticNet = prob_enet,
+  RF         = prob_rf,
+  GBM        = prob_gbm
+) #suggested by Gemini
+
+#source: Kuhn (2026). Package 'caret': 'calibration'". 
+#https://cran.r-project.org/web/packages/caret/caret.pdf
+
+#source for auto.key
+#https://stackoverflow.com/questions/10828016/lattice-auto-key-how-to-adjust-lines-and-points
+cal_obj <- calibration(obs ~ LDA+ElasticNet+RF+GBM, data = calibration_df, cuts = 11)
+plot(cal_obj, type = "b", main = "Probability Calibration Curve", auto.key = TRUE)
+
+```
+Model summaries
+```{r}
+#Creating a list of the models loaded in
+#source: https://www.w3schools.com/r/r_lists.asp
+
+models <- list(
+  LDA     = mod_glm,
+  ElasticNet   = mod_glmnet,
+  RandomForest = mod_rf,
+  GBM          = mod_gbm
+)
+#Using resamples to give a summary of the models
+#https://www.rdocumentation.org/packages/caret/versions/6.0-92/topics/resamples
+res <- resamples(models)
+summary(res)
+```
+Highest Mean ROC: GBM
+Highest Mean Sensitivity: Random Forest
+Highest Mean Specificity: LDA
+
+Model Comparison
+```{r}
+bestTunes <- list(
+  LDA     = mod_glm$bestTune,
+  ElasticNet   = mod_glmnet$bestTune,
+  RandomForest = mod_rf$bestTune,
+  GBM          = mod_gbm$bestTune
+)
+print(bestTunes)
+#Using diff to give a summary of the resamples
+#https://www.rdocumentation.org/packages/caret/versions/6.0-92/topics/resamples
+resamples_diff <- diff(res) #gemini suggested using diff() on the entire res (resample) variable
+summary(resamples_diff) #gemini suggested the use of summary() for the final results
+```
+
+After evaluating the summary of differences between models. There are multiple conclusions that may be drawn. 
+ROC:
+
+LDA vs. GBM : p value is 0.03812. Difference is -2.538e-03. This is statistically significant (P<0.05)  and despite that small difference in ROC, GBM does outperform LDA. 
+
+Elastic Net vs. GBM: p-value is 0.04356. Difference is -2.498e-03. This difference in overall performace is statistically significant (P<0.05)  and GBM does outperform elastic net. 
+
+Sensitivity:
+GBM vs. LDA: p-value is 0.006523. Difference is  -0.008381. The result is statistically significant (P<0.05)  and despite the small difference, GBM does outperform LDA in sensitivity. 
+
+Random Forest vs. LDA: p-value is 0.001598 Difference is -0.022775 The result is statistically significant (P<0.05) and despite the small difference, Random Forest does outperform LDA in sensitivity. 
+
+Random Forest vs. Elastic Net: p-value is 0.003055  Difference is -0.023164   The result is statistically significant (P<0.05)  and despite the small difference, Random Forest does outperform Elastic Net in sensitivity. 
+
+GBM vs. Elastic Net: p-value is 0.019979     Difference is -0.008770   The result is statistically significant (P<0.05) and despite the small difference, GBM does outperform Elastic Net in sensitivity. 
+
+GBM vs. Random Forest: p-value is 0.001068     Difference is -0.0129078   The result is statistically significant (P<0.05) and despite the small difference, GBM does outperform Random Forest in sensitivity. 
+
+Specificity:
+Random Forest vs. LDA: p-value is 0.01421 . Difference is 0.0185307. The result is statistically significant (P<0.05) and despite the small difference, LDA does outperform Random Forest in specificity 
+
+Random Forest vs. Elastic Net: p-value is 0.01206 . Difference is 0.0183185 The result is statistically significant (P<0.05) and despite the small difference, Elastic Net does outperform Random Forest in specificity 
+
+
+
