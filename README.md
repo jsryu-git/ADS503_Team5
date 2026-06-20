@@ -97,7 +97,6 @@ ADS503_Team5/
 │
 ├── Data/
 │   ├── Raw Data/
-│   └── Processed Data/
 │
 ├── EDA.qmd
 ├── Preprocessing_and_baseline_models.qmd
