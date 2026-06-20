@@ -1,0 +1,69 @@
+---
+title: "Final Model Analysis and Interpretation"
+subtitle: "ADS 503 Final Project"
+author: "Vince Garcia"
+format: pdf
+---
+Libraries
+```{r setup}
+knitr::opts_chunk$set(
+	message = FALSE,
+	warning = FALSE,
+	include = FALSE
+)
+library(caret)
+library(pROC)
+library(scales)
+library(glmnet)
+library(ggplot2)
+library(gbm)
+library(PRROC) # Explicitly loaded for Precision-Recall evaluation metrics
+
+set.seed(503)
+
+```
+Importing from Model Tuning
+```{r rebuild-data}
+#| warning: false
+setwd(r"(C:\Users\User\ADS503_Team5\Raw Data)")
+load("evaluated_models.RData")
+#source: https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/load
+
+```
+Model Selection & Justification
+```{r}
+# Plot the visual justification (ROC)
+cal_obj <- calibration(obs ~ LDA+ElasticNet+RF+GBM, data = calibration_df, cuts = 11)
+plot(cal_obj, type = "b", main = "Probability Calibration Curve", auto.key = TRUE)
+```
+From this Proabability Calibration Curve, all models are trained on the same test data. As the data spreads out, each model improves its observed event percentage up. However, when the bin midpoint reaches 100, LDA takes a noticeable drop while GBM maintains the highest Observed Event Percentage. 
+Highest overall performance: GBM
+```{r}
+#Performance metrics summarized
+summary(res)
+```
+Highest Mean ROC: GBM
+Highest Mean Sensitivity: Random Forest
+Highest Mean Specificity: LDA
+
+Among the 4 models tested, GBM has the highest ROC, which can be determined as the overall performance. While the ROC is a reliable measure of overall performance, the linear model, LDA does have the highest specificity while Random Forest has the highest sensitivity.
+
+Important Variables for Winning Model
+```{r}
+#using var imp for the important variables
+#source: https://r-statistics.co/caret-varImp-in-R.html
+important_variables <- varImp(mod_gbm, scale = TRUE)
+print(important_variables$importance)
+```
+Above are the weights of each variable in the GBM model. General Health remains the most critical variable to the model with an overall % score of 100, followed by HighBP (77.06%) and BMI (44.63%).
+
+
+Visual Representation of Variable Importance of GBM
+```{r}
+#source: https://r-statistics.co/caret-varImp-in-R.html
+ggplot(important_variables) +
+  labs(title = "Variable importance from GBM",
+       x = "Predictor", y = "Importance (0% to 100%)") +
+  theme_minimal()
+```
+The distribution of importance shows that the leading indicators of diabetes are: General Health (100%), High BP (77.06%), BMI (44.63%), Age (30.15%), HighChol (23.91%), and DiffWalk (4.96%). 
