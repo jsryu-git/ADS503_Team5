@@ -210,11 +210,11 @@ ROC curves were compared to assess each model's ability to separate diabetic fro
 
 | Metric            |  Value |
 |-------------------|-------:|
-| ROC AUC           | 0.8303 |
-| Accuracy          | 0.7498 |
-| Balanced Accuracy | 0.7498 |
-| Sensitivity       | 0.7754 |
-| Specificity       | 0.7241 |
+| ROC AUC           | 0.8302 |
+| Accuracy          | 0.7504 |
+| Balanced Accuracy | 0.7504 |
+| Sensitivity       | 0.7748 |
+| Specificity       | 0.7260 |
 
 ## Variable Importance
 
