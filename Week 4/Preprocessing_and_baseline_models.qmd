@@ -269,7 +269,7 @@ plot(
 )
 ```
 
-The AUC gives us a threshold-independent look at how well the model separates the two classes.  
+The AUC gives us a threshold-independent look at how well the model separates the two classes.
 
 ## Prediction Spread
 
@@ -317,7 +317,7 @@ confusionMatrix(
 
 ## Full Threshold Tradeoff Sweep
 
-Mapping out the exact trade-offs across the entire threshold range.  
+Mapping out the exact trade-offs across the entire threshold range.
 
 ```{r threshold_compare}
 threshold_grid <- tibble(
@@ -372,10 +372,10 @@ This visualization lets us pick a threshold tailored to our specific goals. For 
 
 ## Baseline model interpretation
 
-Our baseline pipeline is stable, and the logistic regression model gives us a solid performance floor. While useful and interpretable, a linear approach likely fails to capture non-linear interactions hidden in this survey data.  
+Our baseline pipeline is stable, and the logistic regression model gives us a solid performance floor. While useful and interpretable, a linear approach likely fails to capture non-linear interactions hidden in this survey data.
 
-Moving forward, the plan is to implement cross-validation and evaluate:  
-1. Penalized Regression (Elastic Net) to address correlated predictors.  
-2. Tree-based models (Random Forest, XGBoost) to better handle non-linear feature interactions and class imbalances.  
+Moving forward, the plan is to implement cross-validation and evaluate:\
+1. Penalized Regression (Elastic Net) to address correlated predictors.\
+2. Tree-based models (Random Forest, XGBoost) to better handle non-linear feature interactions and class imbalances.
 
-We will evaluate all models using consistent metrics, prioritizing ROC AUC and Balanced Accuracy.  
+We will evaluate all models using consistent metrics, prioritizing ROC AUC and Balanced Accuracy.

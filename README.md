@@ -14,36 +14,24 @@ To use this project, first clone the repo on your device using the commands belo
 * [Vince Garcia](https://github.com/VinceGarcia11)  
 * [Jun Sik Ryu](https://github.com/jsryu-git)  
 
-### Methods  
-* Data Exploration  
-* Data Preparation  
-* Pre-processing  
-* Model Training  
-* Data Visualization  
-* Statistical Modeling  
+### Project Overview  
 
-### Technologies  
-* R  
-* PowerPoint  
-* Word  
-* Excel  
-* ChatGPT 5.4  
-* Google Gemini  
+Diabetes is one of the most prevalent chronic diseases in the United States and is associated with substantial long-term health complications and healthcare costs. Early identification of individuals at elevated risk can support preventative interventions and improve patient outcomes.
+This project applies predictive analytics and machine learning techniques to identify diabetes status using demographic, behavioral, and health-related indicators collected through the Behavioral Risk Factor Surveillance System (BRFSS) survey.
+Multiple supervised learning models were developed and compared to determine which modeling approach provides the strongest predictive performance while maintaining interpretability.
 
-### Abstract  
-
-This project analyzes diabetes related health indicators using predictive modeling techniques to identify factors associated with diabetes risk. Multiple machine learning approaches, including linear, nonlinear, and tree based models, are compared to evaluate predictive performance and interpretability. The findings aim to support healthcare related decision making and early risk identification through data driven analysis.
 
 ### Problem Statement  
 
 Diabetes is one of the most common chronic health conditions and is associated with significant long term health complications. Early identification of individuals at risk can improve prevention and treatment outcomes. The goal of this project is to develop predictive models that classify diabetes status based on demographic, behavioral, and health related indicators.
 
 ### Goals  
-* Build and compare multiple predictive models  
-* Identify the most influential diabetes risk factors  
-* Evaluate model performance using appropriate metrics  
-* Create clear visualizations and interpretable results  
-* Apply predictive analytics concepts learned in ADS503  
+•	Explore relationships between health indicators and diabetes status
+•	Develop reproducible machine learning workflows in R
+•	Compare multiple predictive modeling approaches
+•	Evaluate model performance using cross-validation and independent testing
+•	Identify influential predictors associated with diabetes risk
+•	Recommend a final model based on predictive performance and interpretability
 
 ### Non-Goals  
 * Providing medical diagnoses or treatment recommendations  
@@ -51,20 +39,91 @@ Diabetes is one of the most common chronic health conditions and is associated w
 * Developing a production ready healthcare application  
 
 ### Data Sources  
+Diabetes Health Indicators Dataset
+•	Source: Kaggle
+•	Dataset Link: https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset
 
-#### Primary Dataset  
-* Diabetes Health Indicators Dataset  
-  * Source: Kaggle  
-  * Link: https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset  
-  * Description: The dataset contains demographic, behavioral, and health related variables associated with diabetes risk and outcomes. Variables include BMI, smoking status, physical activity, general health indicators, age, income, and other health measures collected through public health surveys.
+### Variables
+The dataset includes demographic, behavioral, and health-related characteristics such as:
+•	Body Mass Index (BMI)
+•	High Blood Pressure
+•	High Cholesterol
+•	Smoking Status
+•	Physical Activity
+•	General Health
+•	Mental Health
+•	Physical Health
+•	Age
+•	Income
+•	Education
+
+### Methods  
+The project follows the predictive modeling framework presented in Applied Predictive Modeling (Kuhn & Johnson, 2013).
+
+Exploratory Data Analysis
+•	Data quality assessment
+•	Missing value analysis
+•	Outlier review
+•	Class distribution analysis
+•	Predictor-response exploration
+•	Correlation analysis
+
+Data Preparation
+•	Feature engineering
+•	Variable transformation
+•	Standardization
+•	Near-zero variance screening
+•	Training/testing split
+
+Predictive Modeling
+The following models were evaluated:
+1.	Logistic Regression
+2.	Elastic Net
+3.	Random Forest
+4.	Gradient Boosting Machine (GBM)
+
+Model Evaluation
+Models were evaluated using:
+•	ROC AUC
+•	Accuracy
+•	Sensitivity
+•	Specificity
+•	Balanced Accuracy
+•	Cross-validation performance
+
+### Repository Structure  
+ADS503_Team5/
+│
+├── Data/
+│   ├── Raw Data/
+│   └── Processed Data/
+│
+├── EDA.qmd
+├── Preprocessing_and_baseline_models.qmd
+├── model_tuning.qmd
+├── Final_Report_Team5.qmd
+│
+├── Presentation/
+│
+├── Figures/
+│
+└── README.md
+
+### Technologies  
+* R  
+* PowerPoint  
+* Word  
+* Excel  
+* GitHub
+* ChatGPT 5.4  
+* Google Gemini  
 
 ### References  
 
-Centers for Disease Control and Prevention. (2024). *Diabetes overview*. https://www.cdc.gov/diabetes/index.html  
+Centers for Disease Control and Prevention. (2024). Diabetes overview. https://www.cdc.gov/diabetes/
+Kuhn, M., & Johnson, K. (2013). Applied predictive modeling. Springer.
+Teboul, A. (2023). Diabetes Health Indicators Dataset. Kaggle. https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset
 
-Kaggle. (2024). *Diabetes health indicators dataset*. https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset  
-
-### Presentations and Projects  
-* Final presentation slides  
-* Predictive modeling report  
-* Model evaluation and comparison results  
+### Deliverables
+Technical Report [ADD LINK]
+Presentation [ADD LINK]
