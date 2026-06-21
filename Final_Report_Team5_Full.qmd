@@ -56,7 +56,7 @@ The full binary dataset was used for EDA because it preserves the actual real-wo
 
 Key predictors include BMI, high blood pressure, high cholesterol, smoking status, physical activity, fruit and vegetable consumption, general health, mental health, physical health days, difficulty walking, age, education, and income.
 
-```{r load-data}
+```{r load-data, warning = FALSE}
 library(tidyverse)
 library(skimr)
 library(corrplot)
@@ -67,12 +67,14 @@ library(caret)
 library(recipes)
 library(yardstick)
 library(pROC)
+library(doParallel)
+library(gbm)
 
 theme_set(theme_minimal(base_size = 11))
 dm_palette <- c("No Diabetes" = "#4C9F70", "Diabetes" = "#D1495B")
 
-df_full  <- read_csv("Raw Data/diabetes_binary_health_indicators_BRFSS2015.csv")
-df_model <- read_csv("Raw Data/diabetes_binary_5050split_health_indicators_BRFSS2015.csv")
+df_full  <- read_csv("../Raw Data/diabetes_binary_health_indicators_BRFSS2015.csv")
+df_model <- read_csv("../Raw Data/diabetes_binary_5050split_health_indicators_BRFSS2015.csv")
 
 df_model <- df_model |>
   mutate(Diabetes_binary = factor(
@@ -205,16 +207,13 @@ df_full |>
 
 BMI demonstrated the strongest continuous relationship with diabetes status. Diabetic respondents exhibited substantially higher BMI values than non-diabetic respondents. PhysHlth and MentHlth were highly right-skewed and contained large concentrations of zero values, suggesting opportunities for alternative feature engineering approaches in future work.
 
-
 ## Ordinal Predictor Analysis
 
 GenHlth displayed the strongest ordinal relationship with diabetes prevalence. Diabetes rates increased consistently across worsening health categories. Similar monotonic trends were observed for Age, Income, and Education, indicating that both health status and socioeconomic factors contribute predictive information.
 
-
 ## Correlation Analysis
 
 Correlation analysis revealed moderate relationships among several health-related variables, but no pairwise correlations were sufficiently large to indicate severe multicollinearity. Therefore, no variables were removed solely due to correlation concerns.
-
 
 ## EDA Summary
 
@@ -295,11 +294,15 @@ Logistic regression was selected as the baseline because it is interpretable, co
 ```{r logistic-regression}
 # Caret-compatible target labels
 recode_target <- function(d) {
-  d |> mutate(Diabetes_binary = factor(
-    ifelse(as.character(Diabetes_binary) == "Diabetes", "Diabetes", "NoDiabetes"),
-    levels = c("Diabetes", "NoDiabetes")
-  ))
+  d |>
+    mutate(
+      Diabetes_binary = factor(
+        ifelse(as.character(Diabetes_binary) == "Diabetes", "Diabetes", "NoDiabetes"),
+        levels = c("Diabetes", "NoDiabetes")
+      )
+    )
 }
+
 train_cv <- recode_target(train_processed)
 test_cv  <- recode_target(test_processed)
 
@@ -308,23 +311,40 @@ test_x  <- as.matrix(test_cv[, colnames(test_cv) != "Diabetes_binary"])
 train_y <- train_cv$Diabetes_binary
 test_y  <- test_cv$Diabetes_binary
 
-x_train_df <- as.data.frame(predict(preProcess(train_x, method = c("zv","center","scale")), train_x))
-x_test_df  <- as.data.frame(predict(preProcess(train_x, method = c("zv","center","scale")), test_x))
+# Fit preprocessing only on training data, then apply to both train and test
+pp <- preProcess(train_x, method = c("zv", "center", "scale"))
+
+x_train_df <- as.data.frame(predict(pp, train_x))
+x_test_df <- as.data.frame(predict(pp, test_x))
+
+if ("package:doParallel" %in% search()) {
+  try(stopImplicitCluster(), silent = TRUE)
+}
 
 set.seed(503)
-cv_index <- createFolds(train_cv$Diabetes_binary, k = 5, returnTrain = TRUE)
+cv_index <- createFolds(train_y, k = 5, returnTrain = TRUE)
+
 ctrl <- trainControl(
-  method = "cv", index = cv_index,
-  classProbs = TRUE, summaryFunction = twoClassSummary,
-  savePredictions = "final", verboseIter = FALSE
+  method = "cv",
+  index = cv_index,
+  classProbs = TRUE,
+  summaryFunction = twoClassSummary,
+  savePredictions = "final",
+  verboseIter = FALSE,
+  allowParallel = FALSE
 )
 
 set.seed(503)
 mod_glm <- train(
-  x = x_train_df, y = train_y,
-  method = "glm", family = binomial,
-  metric = "ROC", trControl = ctrl
+  x = x_train_df,
+  y = train_y,
+  method = "glm",
+  family = binomial(),
+  metric = "ROC",
+  trControl = ctrl
 )
+
+mod_glm
 ```
 
 ## Baseline Model Performance
@@ -367,7 +387,6 @@ All models share the same 5-fold cross-validation setup and are optimized on ROC
 Elastic Net combines L1 (lasso) and L2 (ridge) regularization, controlled by the mixing parameter alpha and the penalty strength lambda. This approach reduces overfitting, handles correlated predictors by shrinking their coefficients jointly, and can perform automatic variable selection by driving weak coefficients to zero. A 10-point tuning grid was searched over alpha and lambda combinations.
 
 ```{r elastic-net}
-library(doParallel)
 cl <- makePSOCKcluster(max(1, detectCores() - 1))
 registerDoParallel(cl)
 
@@ -415,10 +434,13 @@ mod_rf <- train(
 
 ## Gradient Boosting Machine
 
-GBM builds trees sequentially, with each new tree improving the errors of the previous ensemble. This iterative error-correction approach often yields strong predictive performance but requires careful tuning to avoid overfitting. The code below defines a candidate grid for number of trees, interaction depth, shrinkage, and minimum observations per node. In this draft version, the GBM chunk uses a placeholder configuration for runtime control. Before final submission, replace `head(gbm_grid, 1)` with the selected tuning row or the team's final tuned GBM object if available.
+GBM builds trees sequentially, with each new tree improving the errors of the previous ensemble. This iterative error-correction approach often yields strong predictive performance but requires careful tuning to avoid overfitting. The code below defines a candidate grid for number of trees, interaction depth, shrinkage, and minimum observations per node. In this draft version, the GBM chunk uses a placeholder configuration for runtime control.
 
 ```{r gbm-model}
-library(gbm)
+
+cl <- makePSOCKcluster(max(1, detectCores() - 1))
+registerDoParallel(cl)
+
 gbm_grid <- expand.grid(
   n.trees           = seq(150, 300, by = 75),
   interaction.depth = seq(1, 5, by = 2),
@@ -426,21 +448,21 @@ gbm_grid <- expand.grid(
   n.minobsinnode    = 50
 )
 
-ctrl_final <- trainControl(
-  method = "none", classProbs = TRUE,
-  summaryFunction = twoClassSummary,
-  allowParallel = FALSE, trim = TRUE, returnData = TRUE
-)
-
-gc()
+# Re-using the cross-validation controller to find the optimal hyperparameters
 set.seed(503)
 mod_gbm <- train(
-  x = x_train_df, y = train_y,
-  method = "gbm", metric = "ROC",
-  trControl = ctrl_final,
-  tuneGrid  = head(gbm_grid, 1),
+  x         = x_train_df, 
+  y         = train_y,
+  method    = "gbm", 
+  metric    = "ROC",
+  trControl = ctrl,
+  tuneGrid  = gbm_grid,
   verbose   = FALSE
 )
+
+# Explicitly shut down the cluster to release resources
+stopCluster(cl)
+registerDoSEQ()
 ```
 
 # Validation and Testing
@@ -475,7 +497,7 @@ perf_table <- bind_rows(
 perf_table |> kable(caption = "Test set performance across all models")
 ```
 
-The final comparison table should be interpreted using ROC AUC and balanced accuracy as the primary criteria. ROC AUC evaluates ranking ability across thresholds, while balanced accuracy averages sensitivity and specificity and is less affected by class imbalance than raw accuracy. After inserting the final model outputs, briefly identify whether the best model gains meaningful performance over Logistic Regression or whether the simpler model remains competitive.
+The final performance metrics demonstrate that all four modeling approaches possess strong, stable discriminative power on the held-out test set, with ROC AUC values hovering around 0.83. While the Gradient Boosting Machine (GBM) achieves the highest overall ROC AUC (0.8302) the baseline Logistic Regression model remains remarkably competitive, trailing the ensemble method by a negligible margin. This minimal delta in performance indicates that the log-odds of diabetes risk are largely characterized by additive, linear relationships among the predictors. Given the high stakes and need for transparency in clinical screening workflows, the structural simplicity and immediate interpretability of the Logistic Regression baseline may weigh heavily in favor of its selection over the marginal accuracy gains of the more complex tree-based ensembles.
 
 ## ROC Curve Comparison
 
@@ -508,7 +530,6 @@ ggplot(roc_df, aes(x = fpr, y = tpr, color = model)) +
        color = "Model") +
   theme(legend.position = "bottom")
 ```
-
 
 ## Final Performance Metrics
 
@@ -708,16 +729,29 @@ mod_rf <- train(x = x_train_df, y = train_y, method = "ranger", metric = "ROC",
 ## A.9 Gradient Boosting Machine
 
 ```{r appendix-gbm, echo=TRUE, eval=FALSE}
-gbm_grid <- expand.grid(n.trees = seq(150,300,by=75),
-                        interaction.depth = seq(1,5,by=2),
-                        shrinkage = 0.1, n.minobsinnode = 50)
-ctrl_final <- trainControl(method = "none", classProbs = TRUE,
-                           summaryFunction = twoClassSummary,
-                           allowParallel = FALSE, trim = TRUE, returnData = TRUE)
-gc()
+gbm_grid <- expand.grid(
+  n.trees           = seq(150, 300, by = 75),
+  interaction.depth = seq(1, 5, by = 2),
+  shrinkage         = 0.1, 
+  n.minobsinnode    = 50
+)
+
+cl <- makePSOCKcluster(max(1, detectCores() - 1))
+registerDoParallel(cl)
+
 set.seed(503)
-mod_gbm <- train(x = x_train_df, y = train_y, method = "gbm", metric = "ROC",
-                 trControl = ctrl_final, tuneGrid = head(gbm_grid, 1), verbose = FALSE)
+mod_gbm <- train(
+  x         = x_train_df, 
+  y         = train_y, 
+  method    = "gbm", 
+  metric    = "ROC",
+  trControl = ctrl, 
+  tuneGrid  = gbm_grid, 
+  verbose   = FALSE
+)
+
+stopCluster(cl)
+registerDoSEQ()
 ```
 
 ## A.10 Final Evaluation
