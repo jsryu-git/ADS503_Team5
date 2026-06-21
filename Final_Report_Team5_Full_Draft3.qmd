@@ -477,8 +477,6 @@ perf_table |> kable(caption = "Test set performance across all models")
 
 The final comparison table should be interpreted using ROC AUC and balanced accuracy as the primary criteria. ROC AUC evaluates ranking ability across thresholds, while balanced accuracy averages sensitivity and specificity and is less affected by class imbalance than raw accuracy. After inserting the final model outputs, briefly identify whether the best model gains meaningful performance over Logistic Regression or whether the simpler model remains competitive.
 
-\[INSERT 1 PARAGRAPH INTERPRETING FINAL MODEL TABLE\]
-
 ## ROC Curve Comparison
 
 ROC curves were compared to assess each model's ability to separate diabetic from non-diabetic individuals across all possible classification thresholds. A higher area under the curve indicates better discrimination. Tree-based models are expected to outperform linear approaches if non-linear feature interactions exist in the data.
@@ -514,13 +512,13 @@ ggplot(roc_df, aes(x = fpr, y = tpr, color = model)) +
 
 ## Final Performance Metrics
 
-| Metric            |      Value |
-|-------------------|-----------:|
-| ROC AUC           | \[INSERT\] |
-| Accuracy          | \[INSERT\] |
-| Balanced Accuracy | \[INSERT\] |
-| Sensitivity       | \[INSERT\] |
-| Specificity       | \[INSERT\] |
+| Metric            |  Value |
+|-------------------|-------:|
+| ROC AUC           | 0.8302 |
+| Accuracy          | 0.7504 |
+| Balanced Accuracy | 0.7504 |
+| Sensitivity       | 0.7748 |
+| Specificity       | 0.7260 |
 
 ## Variable Importance
 
@@ -539,7 +537,7 @@ if (inherits(mod_rf$finalModel, "ranger")) {
 }
 ```
 
-\[INSERT VARIABLE IMPORTANCE DISCUSSION — identify which predictors ranked highest and whether they align with the EDA findings (e.g., BMI, GenHlth, HighBP). Discuss whether the final model is using clinically meaningful predictors rather than relying on artifacts. If the selected final model is not Random Forest, replace the plot above with the corresponding variable importance or coefficient-based interpretation from that model.\]
+Variable importance analysis identified General Health (GenHlth), High Blood Pressure (HighBP), Body Mass Index (BMI), Age, and High Cholesterol (HighChol) as the most influential predictors of diabetes status. These findings closely mirror the exploratory data analysis, where BMI, GenHlth, HighBP, and Age consistently demonstrated strong associations with diabetes prevalence. The agreement between EDA findings and model-derived importance rankings increases confidence that the model is capturing clinically meaningful risk factors rather than artifacts within the dataset. Furthermore, many of these variables are well-established predictors of diabetes in epidemiological and clinical research, supporting the practical relevance of the model's predictions.
 
 # Discussion and Conclusions
 
@@ -549,7 +547,7 @@ Across the analysis, BMI, general health self-rating, high blood pressure, physi
 
 From a practical healthcare perspective, these findings suggest that survey-based screening tools could help prioritize individuals for follow-up clinical evaluation. The model should not be interpreted as a diagnostic replacement. Rather, it could support early outreach by identifying respondents whose self-reported health profiles resemble those of individuals with diabetes.
 
-The final model, **\[INSERT FINAL MODEL NAME\]**, achieved a test set ROC AUC of **\[INSERT ROC AUC\]**, indicating **\[INSERT INTERPRETATION — e.g., strong discriminative ability well above the random baseline of 0.50\]**. While more complex models may marginally improve predictive accuracy, interpretability remains important in healthcare screening contexts.
+The final model, GBM (Gradient Boosting Machine), achieved a test set ROC AUC of 0.8302, indicating strong discriminative ability and substantially better performance than random classification, which would produce an ROC AUC of 0.50. While more complex models may marginally improve predictive accuracy, interpretability remains important in healthcare screening contexts.
 
 ## Limitations
 
@@ -575,13 +573,11 @@ This project demonstrates that diabetes status can be predicted with meaningful 
 
 Centers for Disease Control and Prevention. (2015). *Behavioral Risk Factor Surveillance System survey data*. U.S. Department of Health and Human Services.
 
-Centers for Disease Control and Prevention. (2024). *National diabetes statistics report*. U.S. Department of Health and Human Services. \[INSERT URL OR ACCESS DATE IF REQUIRED\]
+Centers for Disease Control and Prevention. (2024). National diabetes statistics report. U.S. Department of Health and Human Services. https://www.cdc.gov/diabetes/data/statistics-report
 
 Kuhn, M., & Johnson, K. (2013). *Applied predictive modeling*. Springer.
 
-Teboul, A. (2023). *Diabetes health indicators dataset*. Kaggle. \[INSERT DATASET URL\]
-
-\[INSERT ADDITIONAL REFERENCES AS NEEDED\]
+Teboul, A. (2023). Diabetes health indicators dataset. Kaggle. https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset
 
 # Appendix: Reproducible R Code
 
