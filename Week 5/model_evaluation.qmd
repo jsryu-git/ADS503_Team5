@@ -48,7 +48,7 @@ load("tuned_models_and_data.RData")
 
 ```
 
-ROC Curve Construction
+ROC Predicted Model Construction
 ```{r}
 #Source: Robin (2026). Package 'pROC'. 
 #Link:  https://xrobin.github.io/pROC/
@@ -58,34 +58,29 @@ prob_rf    <- predict(mod_rf, x_test_df, type = "prob")[["Diabetes"]]
 #gemini suggested [["Diabetes"]] subset when calling predict()
 prob_gbm    <- predict(mod_gbm, x_test_df, type = "prob")[["Diabetes"]]
 #gemini suggested [["Diabetes"]] subset when calling predict()
+```
 
-
-
-
+Model ROC construction
+```{r}
 roc_lda  <- roc(test_y, prob_lda, levels = c("NoDiabetes", "Diabetes"), quiet = TRUE)
 roc_enet    <- roc(test_y, prob_enet, levels = c("NoDiabetes", "Diabetes"), quiet = TRUE)
 roc_rf  <- roc(test_y, prob_rf, levels = c("NoDiabetes", "Diabetes"), quiet = TRUE)
 roc_gbm     <- roc(test_y, prob_gbm, levels = c("NoDiabetes", "Diabetes"), quiet = TRUE)
 ```
 
-Delong Test Results for model ROC Curves
+Delong Test Results: baseline comparison
 ```{r}
 # Execute statistical comparison of holdout curves
 #LDA Vs. Elastic Net
 delong_result <- roc.test(roc_lda, roc_enet, method = "delong")
 print(delong_result)
-#Random Forest vs. GBM
-delong_result2 <- roc.test(roc_rf, roc_gbm,method = "delong")
+#LDA vs. GBM
+delong_result2 <- roc.test(roc_lda, roc_gbm,method = "delong")
 print(delong_result2)
-#LDA versus GBM
-delong_result3 <- roc.test(roc_lda, roc_gbm,method = "delong")
+#LDA versus Random Forest
+delong_result3 <- roc.test(roc_lda, roc_rf,method = "delong")
 print(delong_result3)
-#Random Forest versus LDA
-delong_result4 <- roc.test(roc_rf, roc_lda,method = "delong")
-print(delong_result4)
-#Random Forest versus Elastic Net
-delong_result5 <- roc.test(roc_rf, roc_enet,method = "delong")
-print(delong_result5)
+
 ```
 Judging by the results of the Delong's tests, most of the models remain statistically indistinguishable from each other except for LDA and GBM, where the p value of that test is 0.002433. GBM outperforms LDA significantly. 
 
@@ -147,6 +142,25 @@ models <- list(
 res <- resamples(models)
 summary(res)
 ```
+Confusion Matrix for GBM
+```{r}
+
+#Using if-else for the confusion matrix
+#source: https://www.rdocumentation.org/packages/base/versions/3.6.2/topics/ifelse
+
+pred_class_gbm <- factor(
+  ifelse(prob_gbm > 0.5, "Diabetes", "NoDiabetes"),
+  levels = c("NoDiabetes", "Diabetes")
+) #Gemini suggested as.factor(), ifelse() and "levels" to make sizes the same for reference and data in confusion matrix
+
+actual_class <- factor(test_y, levels = c("NoDiabetes", "Diabetes")) #gemini suggested factor() and passing in the same levels and the original test_y data
+
+# Evaluate exact metrics 
+gbm_cm <- confusionMatrix(data = pred_class_gbm, reference = actual_class, positive = "Diabetes") #gemini suggested positive = "Diabetes"
+print(gbm_cm)
+
+```
+
 Highest Mean ROC: GBM
 Highest Mean Sensitivity: Random Forest
 Highest Mean Specificity: LDA
@@ -195,7 +209,7 @@ Exporting the models to model_evaulation
 setwd(r"(C:\Users\User\ADS503_Team5\Raw Data)")
 # Save evaluation file
 save(
-  mod_glm, mod_glmnet, mod_rf, mod_gbm, models,
+  mod_glm, mod_glmnet, mod_rf, mod_gbm, models, gbm_cm,
   bestTunes, calibration_df, test_y, resamples_diff, res, roc_list,
   file = "evaluated_models.RData"
 )
