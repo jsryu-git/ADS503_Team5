@@ -205,15 +205,70 @@ df_full |>
 
 ## Continuous Predictor Analysis
 
-BMI demonstrated the strongest continuous relationship with diabetes status. Diabetic respondents exhibited substantially higher BMI values than non-diabetic respondents. PhysHlth and MentHlth were highly right-skewed and contained large concentrations of zero values, suggesting opportunities for alternative feature engineering approaches in future work.
+Among the three continuous variables, BMI shows the clearest separation between classes: diabetic respondents average a BMI of 31.9 (median 31) versus 27.8 (median 27) for non-diabetics — a gap large enough to make BMI the single strongest predictor in the ranking above. PhysHlth and MentHlth also shift upward for the diabetic group (mean poor physical-health days of 8.0 vs. 3.6; poor mental-health days of 4.5 vs. 3.0), but both are dominated by a large spike at zero — most respondents report no bad days — which leaves them heavily right-skewed.
+
+```{r continuous-summary}
+df_full |>
+  select(all_of(continuous_vars), Diabetes_binary) |>
+  pivot_longer(all_of(continuous_vars), names_to = "variable") |>
+  group_by(variable, Diabetes_binary) |>
+  summarise(mean = mean(value), median = median(value), sd = sd(value),
+            .groups = "drop") |>
+  mutate(class = if_else(Diabetes_binary == 1, "Diabetes", "No Diabetes")) |>
+  select(variable, class, mean, median, sd) |>
+  arrange(variable, class) |>
+  mutate(across(c(mean, median, sd), ~round(.x, 2))) |>
+  kable(caption = "Continuous predictors split by diabetes status")
+```
+
+```{r continuous-density}
+df_full |>
+  select(all_of(continuous_vars), Diabetes_binary) |>
+  pivot_longer(all_of(continuous_vars), names_to = "variable") |>
+  mutate(class = if_else(Diabetes_binary == 1, "Diabetes", "No Diabetes")) |>
+  ggplot(aes(x = value, fill = class)) +
+  geom_density(alpha = 0.4) +
+  facet_wrap(~ variable, scales = "free") +
+  scale_fill_manual(values = dm_palette) +
+  labs(title = "Distribution of continuous predictors by class",
+       x = NULL, y = "Density", fill = NULL) +
+  theme(legend.position = "bottom")
+```
+
+The density plot confirms the BMI distribution shifting right for diabetics while retaining a long upper tail, and exposes the zero-inflation in PhysHlth and MentHlth. This skew — together with the implausible high-end BMI values flagged in the outlier review — motivates the alternative encodings (a binary "any bad days" flag, or none/some/many buckets) revisited in future work.
 
 ## Ordinal Predictor Analysis
 
-GenHlth displayed the strongest ordinal relationship with diabetes prevalence. Diabetes rates increased consistently across worsening health categories. Similar monotonic trends were observed for Age, Income, and Education, indicating that both health status and socioeconomic factors contribute predictive information.
+GenHlth displays the strongest and cleanest monotone relationship of any predictor: diabetes prevalence climbs from roughly 2.5% among respondents rating their general health "excellent" (level 1) to nearly 38% among those rating it "poor" (level 5). Age rises steadily through the middle brackets, peaking near 22% around ages 70–74 before dipping slightly in the oldest groups — likely a survivorship effect rather than declining risk. Education and Income trend in the opposite direction, with diabetes rates highest in the lowest brackets, consistent with the established link between socioeconomic status, healthcare access, and diet.
+
+```{r ordinal-predictors}
+df_full |>
+  select(all_of(ordinal_vars), Diabetes_binary) |>
+  pivot_longer(all_of(ordinal_vars), names_to = "predictor", values_to = "level") |>
+  group_by(predictor, level) |>
+  summarise(rate = mean(Diabetes_binary), .groups = "drop") |>
+  ggplot(aes(x = level, y = rate)) +
+  geom_col(fill = "#3B7EA1") +
+  geom_text(aes(label = percent(rate, accuracy = 0.1)), vjust = -0.4, size = 2.5) +
+  facet_wrap(~ predictor, scales = "free_x") +
+  scale_y_continuous(labels = percent_format(), expand = expansion(mult = c(0, 0.2))) +
+  labs(title = "Diabetes rate by ordinal predictor level",
+       x = "Level", y = "Diabetes rate")
+```
 
 ## Correlation Analysis
 
-Correlation analysis revealed moderate relationships among several health-related variables, but no pairwise correlations were sufficiently large to indicate severe multicollinearity. Therefore, no variables were removed solely due to correlation concerns.
+A Spearman correlation matrix across the 21 predictors was examined to check for redundancy that could destabilize the linear models. The largest pairwise correlations are moderate, not severe: Education–Income (0.45), GenHlth–PhysHlth (0.45), DiffWalk–GenHlth (0.42), and DiffWalk–PhysHlth (0.42). These reflect two intuitive clusters — a general-health group (GenHlth, PhysHlth, MentHlth, DiffWalk) and a socioeconomic group (Education, Income) — that partly measure the same underlying construct. Because no correlation approaches the level that signals problematic multicollinearity, all predictors were retained, with the understanding that the regularized and tree-based models handle residual redundancy directly.
+
+```{r correlation-matrix}
+cor_mat <- df_full |>
+  select(-Diabetes_binary) |>
+  cor(method = "spearman")
+
+corrplot(cor_mat, method = "color", type = "upper",
+         tl.cex = 0.7, tl.col = "black",
+         col = colorRampPalette(c("#3B7EA1", "white", "#D1495B"))(200))
+```
 
 ## EDA Summary
 
