@@ -125,5 +125,6 @@ Kuhn, M., & Johnson, K. (2013). Applied predictive modeling. Springer.
 Teboul, A. (2023). Diabetes Health Indicators Dataset. Kaggle. https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset
 
 ### Deliverables
-Technical Report [ADD LINK]
-Presentation [ADD LINK]
+Technical Report Presentation [https://youtu.be/kFCeR0yXadw]  
+Technical Report Deliverable [https://github.com/jsryu-git/ADS503_Team5/blob/ec151892e75e04495e86e2d40e2b7561d7215e6e/Final_Project_Report-Team5_Full.qmd]  
+Non-Technical Presentation [<video controls src="https://github.com/jsryu-git/ADS503_Team5/blob/ec151892e75e04495e86e2d40e2b7561d7215e6e/Nontechnical_Summary-Team5.mp4" title="ADD LINK"></video>]
