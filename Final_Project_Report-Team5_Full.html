@@ -1,0 +1,1767 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
+
+<meta charset="utf-8">
+<meta name="generator" content="quarto-1.9.37">
+
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+
+<meta name="author" content="Mehson Delan, Malik Tisani, Vince Garcia, Jun Sik Ryu">
+
+<title>Predicting Diabetes Risk Using Health Indicators</title>
+<style>
+/* Default styles provided by pandoc.
+** See https://pandoc.org/MANUAL.html#variables-for-html for config info.
+*/
+code{white-space: pre-wrap;}
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: min(4vw, 1.5em);}
+div.column{flex: auto; overflow-x: auto;}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+ul.task-list{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+  width: 0.8em;
+  margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
+  vertical-align: middle;
+}
+/* CSS for syntax highlighting */
+html { -webkit-text-size-adjust: 100%; }
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
+</style>
+
+
+<script src="Final_Project_Report-Team5_Full_files/libs/clipboard/clipboard.min.js"></script>
+<script src="Final_Project_Report-Team5_Full_files/libs/quarto-html/quarto.js" type="module"></script>
+<script src="Final_Project_Report-Team5_Full_files/libs/quarto-html/tabsets/tabsets.js" type="module"></script>
+<script src="Final_Project_Report-Team5_Full_files/libs/quarto-html/popper.min.js"></script>
+<script src="Final_Project_Report-Team5_Full_files/libs/quarto-html/tippy.umd.min.js"></script>
+<script src="Final_Project_Report-Team5_Full_files/libs/quarto-html/anchor.min.js"></script>
+<link href="Final_Project_Report-Team5_Full_files/libs/quarto-html/tippy.css" rel="stylesheet">
+<link href="Final_Project_Report-Team5_Full_files/libs/quarto-html/quarto-syntax-highlighting-7f8f88aac4f3542376d5c11b86a4c14d.css" rel="stylesheet" id="quarto-text-highlighting-styles">
+<script src="Final_Project_Report-Team5_Full_files/libs/bootstrap/bootstrap.min.js"></script>
+<link href="Final_Project_Report-Team5_Full_files/libs/bootstrap/bootstrap-icons.css" rel="stylesheet">
+<link href="Final_Project_Report-Team5_Full_files/libs/bootstrap/bootstrap-efbb37e9afcc02144ebbc7afd12a776f.min.css" rel="stylesheet" append-hash="true" id="quarto-bootstrap" data-mode="light">
+
+
+</head>
+
+<body class="quarto-light">
+
+<div id="quarto-content" class="page-columns page-rows-contents page-layout-article">
+<div id="quarto-margin-sidebar" class="sidebar margin-sidebar">
+  <nav id="TOC" role="doc-toc" class="toc-active">
+    <h2 id="toc-title">Table of contents</h2>
+   
+  <ul>
+  <li><a href="#diabetes-risk-prediction-using-health-indicators" id="toc-diabetes-risk-prediction-using-health-indicators" class="nav-link active" data-scroll-target="#diabetes-risk-prediction-using-health-indicators"><span class="header-section-number">1</span> Diabetes Risk Prediction Using Health Indicators</a>
+  <ul class="collapse">
+  <li><a href="#problem-statement" id="toc-problem-statement" class="nav-link" data-scroll-target="#problem-statement"><span class="header-section-number">1.1</span> Problem Statement</a></li>
+  <li><a href="#analytical-approach" id="toc-analytical-approach" class="nav-link" data-scroll-target="#analytical-approach"><span class="header-section-number">1.2</span> Analytical Approach</a></li>
+  </ul></li>
+  <li><a href="#dataset-overview" id="toc-dataset-overview" class="nav-link" data-scroll-target="#dataset-overview"><span class="header-section-number">2</span> Dataset Overview</a>
+  <ul class="collapse">
+  <li><a href="#data-source" id="toc-data-source" class="nav-link" data-scroll-target="#data-source"><span class="header-section-number">2.1</span> Data Source</a></li>
+  <li><a href="#dataset-characteristics" id="toc-dataset-characteristics" class="nav-link" data-scroll-target="#dataset-characteristics"><span class="header-section-number">2.2</span> Dataset Characteristics</a></li>
+  </ul></li>
+  <li><a href="#data-quality-review" id="toc-data-quality-review" class="nav-link" data-scroll-target="#data-quality-review"><span class="header-section-number">3</span> Data Quality Review</a>
+  <ul class="collapse">
+  <li><a href="#dataset-structure" id="toc-dataset-structure" class="nav-link" data-scroll-target="#dataset-structure"><span class="header-section-number">3.1</span> Dataset Structure</a></li>
+  <li><a href="#summary-statistics" id="toc-summary-statistics" class="nav-link" data-scroll-target="#summary-statistics"><span class="header-section-number">3.2</span> Summary Statistics</a></li>
+  <li><a href="#missing-values-assessment" id="toc-missing-values-assessment" class="nav-link" data-scroll-target="#missing-values-assessment"><span class="header-section-number">3.3</span> Missing Values Assessment</a></li>
+  <li><a href="#outlier-review" id="toc-outlier-review" class="nav-link" data-scroll-target="#outlier-review"><span class="header-section-number">3.4</span> Outlier Review</a></li>
+  </ul></li>
+  <li><a href="#exploratory-data-analysis" id="toc-exploratory-data-analysis" class="nav-link" data-scroll-target="#exploratory-data-analysis"><span class="header-section-number">4</span> Exploratory Data Analysis</a>
+  <ul class="collapse">
+  <li><a href="#diabetes-class-distribution" id="toc-diabetes-class-distribution" class="nav-link" data-scroll-target="#diabetes-class-distribution"><span class="header-section-number">4.1</span> Diabetes Class Distribution</a></li>
+  <li><a href="#predictor-association-ranking" id="toc-predictor-association-ranking" class="nav-link" data-scroll-target="#predictor-association-ranking"><span class="header-section-number">4.2</span> Predictor Association Ranking</a></li>
+  <li><a href="#binary-predictors" id="toc-binary-predictors" class="nav-link" data-scroll-target="#binary-predictors"><span class="header-section-number">4.3</span> Binary Predictors</a></li>
+  <li><a href="#continuous-predictor-analysis" id="toc-continuous-predictor-analysis" class="nav-link" data-scroll-target="#continuous-predictor-analysis"><span class="header-section-number">4.4</span> Continuous Predictor Analysis</a></li>
+  <li><a href="#ordinal-predictor-analysis" id="toc-ordinal-predictor-analysis" class="nav-link" data-scroll-target="#ordinal-predictor-analysis"><span class="header-section-number">4.5</span> Ordinal Predictor Analysis</a></li>
+  <li><a href="#correlation-analysis" id="toc-correlation-analysis" class="nav-link" data-scroll-target="#correlation-analysis"><span class="header-section-number">4.6</span> Correlation Analysis</a></li>
+  <li><a href="#eda-summary" id="toc-eda-summary" class="nav-link" data-scroll-target="#eda-summary"><span class="header-section-number">4.7</span> EDA Summary</a></li>
+  </ul></li>
+  <li><a href="#data-preparation-and-preprocessing" id="toc-data-preparation-and-preprocessing" class="nav-link" data-scroll-target="#data-preparation-and-preprocessing"><span class="header-section-number">5</span> Data Preparation and Preprocessing</a>
+  <ul class="collapse">
+  <li><a href="#data-splitting" id="toc-data-splitting" class="nav-link" data-scroll-target="#data-splitting"><span class="header-section-number">5.1</span> Data Splitting</a></li>
+  <li><a href="#feature-preparation" id="toc-feature-preparation" class="nav-link" data-scroll-target="#feature-preparation"><span class="header-section-number">5.2</span> Feature Preparation</a></li>
+  <li><a href="#handling-correlated-features" id="toc-handling-correlated-features" class="nav-link" data-scroll-target="#handling-correlated-features"><span class="header-section-number">5.3</span> Handling Correlated Features</a></li>
+  </ul></li>
+  <li><a href="#model-strategy-and-justification" id="toc-model-strategy-and-justification" class="nav-link" data-scroll-target="#model-strategy-and-justification"><span class="header-section-number">6</span> Model Strategy and Justification</a>
+  <ul class="collapse">
+  <li><a href="#logistic-regression-as-baseline" id="toc-logistic-regression-as-baseline" class="nav-link" data-scroll-target="#logistic-regression-as-baseline"><span class="header-section-number">6.1</span> Logistic Regression as Baseline</a></li>
+  <li><a href="#elastic-net-for-regularized-linear-modeling" id="toc-elastic-net-for-regularized-linear-modeling" class="nav-link" data-scroll-target="#elastic-net-for-regularized-linear-modeling"><span class="header-section-number">6.2</span> Elastic Net for Regularized Linear Modeling</a></li>
+  <li><a href="#random-forest-for-nonlinear-interactions" id="toc-random-forest-for-nonlinear-interactions" class="nav-link" data-scroll-target="#random-forest-for-nonlinear-interactions"><span class="header-section-number">6.3</span> Random Forest for Nonlinear Interactions</a></li>
+  <li><a href="#gbm-for-sequential-error-correction" id="toc-gbm-for-sequential-error-correction" class="nav-link" data-scroll-target="#gbm-for-sequential-error-correction"><span class="header-section-number">6.4</span> GBM for Sequential Error Correction</a></li>
+  </ul></li>
+  <li><a href="#baseline-model-logistic-regression" id="toc-baseline-model-logistic-regression" class="nav-link" data-scroll-target="#baseline-model-logistic-regression"><span class="header-section-number">7</span> Baseline Model: Logistic Regression</a>
+  <ul class="collapse">
+  <li><a href="#baseline-model-performance" id="toc-baseline-model-performance" class="nav-link" data-scroll-target="#baseline-model-performance"><span class="header-section-number">7.1</span> Baseline Model Performance</a></li>
+  </ul></li>
+  <li><a href="#model-development-and-tuning" id="toc-model-development-and-tuning" class="nav-link" data-scroll-target="#model-development-and-tuning"><span class="header-section-number">8</span> Model Development and Tuning</a>
+  <ul class="collapse">
+  <li><a href="#cross-validation-strategy" id="toc-cross-validation-strategy" class="nav-link" data-scroll-target="#cross-validation-strategy"><span class="header-section-number">8.1</span> Cross-Validation Strategy</a></li>
+  <li><a href="#elastic-net" id="toc-elastic-net" class="nav-link" data-scroll-target="#elastic-net"><span class="header-section-number">8.2</span> Elastic Net</a></li>
+  <li><a href="#random-forest" id="toc-random-forest" class="nav-link" data-scroll-target="#random-forest"><span class="header-section-number">8.3</span> Random Forest</a></li>
+  <li><a href="#gradient-boosting-machine" id="toc-gradient-boosting-machine" class="nav-link" data-scroll-target="#gradient-boosting-machine"><span class="header-section-number">8.4</span> Gradient Boosting Machine</a></li>
+  </ul></li>
+  <li><a href="#validation-and-testing" id="toc-validation-and-testing" class="nav-link" data-scroll-target="#validation-and-testing"><span class="header-section-number">9</span> Validation and Testing</a>
+  <ul class="collapse">
+  <li><a href="#model-comparison" id="toc-model-comparison" class="nav-link" data-scroll-target="#model-comparison"><span class="header-section-number">9.1</span> Model Comparison</a></li>
+  <li><a href="#roc-curve-comparison" id="toc-roc-curve-comparison" class="nav-link" data-scroll-target="#roc-curve-comparison"><span class="header-section-number">9.2</span> ROC Curve Comparison</a></li>
+  <li><a href="#final-performance-metrics" id="toc-final-performance-metrics" class="nav-link" data-scroll-target="#final-performance-metrics"><span class="header-section-number">9.3</span> Final Performance Metrics</a></li>
+  <li><a href="#variable-importance" id="toc-variable-importance" class="nav-link" data-scroll-target="#variable-importance"><span class="header-section-number">9.4</span> Variable Importance</a></li>
+  </ul></li>
+  <li><a href="#discussion-and-conclusions" id="toc-discussion-and-conclusions" class="nav-link" data-scroll-target="#discussion-and-conclusions"><span class="header-section-number">10</span> Discussion and Conclusions</a>
+  <ul class="collapse">
+  <li><a href="#limitations" id="toc-limitations" class="nav-link" data-scroll-target="#limitations"><span class="header-section-number">10.1</span> Limitations</a></li>
+  <li><a href="#future-work" id="toc-future-work" class="nav-link" data-scroll-target="#future-work"><span class="header-section-number">10.2</span> Future Work</a></li>
+  <li><a href="#conclusion" id="toc-conclusion" class="nav-link" data-scroll-target="#conclusion"><span class="header-section-number">10.3</span> Conclusion</a></li>
+  </ul></li>
+  <li><a href="#references" id="toc-references" class="nav-link" data-scroll-target="#references"><span class="header-section-number">11</span> References</a></li>
+  <li><a href="#appendix-reproducible-r-code" id="toc-appendix-reproducible-r-code" class="nav-link" data-scroll-target="#appendix-reproducible-r-code"><span class="header-section-number">12</span> Appendix: Reproducible R Code</a>
+  <ul class="collapse">
+  <li><a href="#a.1-library-setup" id="toc-a.1-library-setup" class="nav-link" data-scroll-target="#a.1-library-setup"><span class="header-section-number">12.1</span> A.1 Library Setup</a></li>
+  <li><a href="#a.2-data-loading-and-encoding" id="toc-a.2-data-loading-and-encoding" class="nav-link" data-scroll-target="#a.2-data-loading-and-encoding"><span class="header-section-number">12.2</span> A.2 Data Loading and Encoding</a></li>
+  <li><a href="#a.3-exploratory-data-analysis" id="toc-a.3-exploratory-data-analysis" class="nav-link" data-scroll-target="#a.3-exploratory-data-analysis"><span class="header-section-number">12.3</span> A.3 Exploratory Data Analysis</a></li>
+  <li><a href="#a.4-data-splitting-and-preprocessing" id="toc-a.4-data-splitting-and-preprocessing" class="nav-link" data-scroll-target="#a.4-data-splitting-and-preprocessing"><span class="header-section-number">12.4</span> A.4 Data Splitting and Preprocessing</a></li>
+  <li><a href="#a.5-cross-validation-setup" id="toc-a.5-cross-validation-setup" class="nav-link" data-scroll-target="#a.5-cross-validation-setup"><span class="header-section-number">12.5</span> A.5 Cross-Validation Setup</a></li>
+  <li><a href="#a.6-logistic-regression" id="toc-a.6-logistic-regression" class="nav-link" data-scroll-target="#a.6-logistic-regression"><span class="header-section-number">12.6</span> A.6 Logistic Regression</a></li>
+  <li><a href="#a.7-elastic-net" id="toc-a.7-elastic-net" class="nav-link" data-scroll-target="#a.7-elastic-net"><span class="header-section-number">12.7</span> A.7 Elastic Net</a></li>
+  <li><a href="#a.8-random-forest" id="toc-a.8-random-forest" class="nav-link" data-scroll-target="#a.8-random-forest"><span class="header-section-number">12.8</span> A.8 Random Forest</a></li>
+  <li><a href="#a.9-gradient-boosting-machine" id="toc-a.9-gradient-boosting-machine" class="nav-link" data-scroll-target="#a.9-gradient-boosting-machine"><span class="header-section-number">12.9</span> A.9 Gradient Boosting Machine</a></li>
+  <li><a href="#a.10-final-evaluation" id="toc-a.10-final-evaluation" class="nav-link" data-scroll-target="#a.10-final-evaluation"><span class="header-section-number">12.10</span> A.10 Final Evaluation</a></li>
+  </ul></li>
+  </ul>
+<div class="quarto-alternate-formats"><h2>Other Formats</h2><ul><li><a href="Final_Project_Report-Team5_Full.pdf"><i class="bi bi-file-pdf"></i>PDF</a></li></ul></div></nav>
+</div>
+<main class="content" id="quarto-document-content">
+
+<header id="title-block-header" class="quarto-title-block default">
+<div class="quarto-title">
+<h1 class="title">Predicting Diabetes Risk Using Health Indicators</h1>
+</div>
+
+
+
+<div class="quarto-title-meta">
+
+    <div>
+    <div class="quarto-title-meta-heading">Author</div>
+    <div class="quarto-title-meta-contents">
+             <p>Mehson Delan, Malik Tisani, Vince Garcia, Jun Sik Ryu </p>
+          </div>
+  </div>
+    
+  
+    
+  </div>
+  
+
+
+</header>
+
+
+<section id="diabetes-risk-prediction-using-health-indicators" class="level1" data-number="1">
+<h1 data-number="1"><span class="header-section-number">1</span> Diabetes Risk Prediction Using Health Indicators</h1>
+<section id="problem-statement" class="level2" data-number="1.1">
+<h2 data-number="1.1" class="anchored" data-anchor-id="problem-statement"><span class="header-section-number">1.1</span> Problem Statement</h2>
+<p>Diabetes is one of the most significant chronic health conditions in the United States, associated with substantial healthcare costs, long-term complications, and reduced quality of life. Traditional screening often requires clinical testing and direct medical evaluation. However, many risk factors are observable through demographic characteristics, health behaviors, and self-reported health conditions routinely collected in population surveys.</p>
+<p>The objective of this project is to determine whether predictive modeling can accurately classify individuals as diabetic or non-diabetic using readily available health indicators from the 2015 Behavioral Risk Factor Surveillance System (BRFSS) survey. Specifically:</p>
+<blockquote class="blockquote">
+<p>Can machine learning models accurately predict diabetes status using demographic, behavioral, and health-related indicators from the BRFSS dataset?</p>
+</blockquote>
+</section>
+<section id="analytical-approach" class="level2" data-number="1.2">
+<h2 data-number="1.2" class="anchored" data-anchor-id="analytical-approach"><span class="header-section-number">1.2</span> Analytical Approach</h2>
+<p>To address this question, four modeling approaches are compared under a consistent validation framework:</p>
+<ul>
+<li>Logistic Regression (baseline)</li>
+<li>Elastic Net (penalized regression)</li>
+<li>Random Forest (ensemble tree-based)</li>
+<li>Gradient Boosting Machine (GBM)</li>
+</ul>
+<p>All models are evaluated using ROC AUC, balanced accuracy, sensitivity, and specificity. Because the dataset is class-imbalanced, raw accuracy is de-emphasized throughout.</p>
+</section>
+</section>
+<section id="dataset-overview" class="level1" data-number="2">
+<h1 data-number="2"><span class="header-section-number">2</span> Dataset Overview</h1>
+<section id="data-source" class="level2" data-number="2.1">
+<h2 data-number="2.1" class="anchored" data-anchor-id="data-source"><span class="header-section-number">2.1</span> Data Source</h2>
+<p>The dataset comes from the Diabetes Health Indicators Dataset published on Kaggle, derived from the 2015 BRFSS conducted by the Centers for Disease Control and Prevention (CDC).</p>
+</section>
+<section id="dataset-characteristics" class="level2" data-number="2.2">
+<h2 data-number="2.2" class="anchored" data-anchor-id="dataset-characteristics"><span class="header-section-number">2.2</span> Dataset Characteristics</h2>
+<p>The full binary dataset was used for EDA because it preserves the actual real-world class distribution observed in BRFSS 2015. The balanced 50/50 dataset was used for model development to prevent the majority class from dominating the learning process and to improve the model’s ability to detect diabetes cases. This choice creates a tradeoff: model training becomes more sensitive to the minority class, but the resulting probabilities may not be calibrated to the natural population prevalence. For that reason, ROC AUC, balanced accuracy, sensitivity, and specificity are emphasized over raw accuracy, and any deployment-oriented version of this model would require recalibration using the full class distribution.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Characteristic</th>
+<th style="text-align: right;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Observations (full binary)</td>
+<td style="text-align: right;">253,680</td>
+</tr>
+<tr class="even">
+<td>Observations (50/50 balanced, used for modeling)</td>
+<td style="text-align: right;">70,692</td>
+</tr>
+<tr class="odd">
+<td>Predictors</td>
+<td style="text-align: right;">21</td>
+</tr>
+<tr class="even">
+<td>Response Variable</td>
+<td style="text-align: right;">Diabetes_binary (0 = No Diabetes, 1 = Diabetes)</td>
+</tr>
+<tr class="odd">
+<td>Data Source</td>
+<td style="text-align: right;">BRFSS 2015</td>
+</tr>
+</tbody>
+</table>
+<p>Key predictors include BMI, high blood pressure, high cholesterol, smoking status, physical activity, fruit and vegetable consumption, general health, mental health, physical health days, difficulty walking, age, education, and income.</p>
+</section>
+</section>
+<section id="data-quality-review" class="level1" data-number="3">
+<h1 data-number="3"><span class="header-section-number">3</span> Data Quality Review</h1>
+<section id="dataset-structure" class="level2" data-number="3.1">
+<h2 data-number="3.1" class="anchored" data-anchor-id="dataset-structure"><span class="header-section-number">3.1</span> Dataset Structure</h2>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Rows: 253,680
+Columns: 22
+$ Diabetes_binary      &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 1, 0, 0, 0…
+$ HighBP               &lt;dbl&gt; 1, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 0, 1, 1…
+$ HighChol             &lt;dbl&gt; 1, 0, 1, 0, 1, 1, 0, 1, 1, 0, 0, 1, 0, 1, 1, 0, 1…
+$ CholCheck            &lt;dbl&gt; 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
+$ BMI                  &lt;dbl&gt; 40, 25, 28, 27, 24, 25, 30, 25, 30, 24, 25, 34, 2…
+$ Smoker               &lt;dbl&gt; 1, 1, 0, 0, 0, 1, 1, 1, 1, 0, 1, 1, 1, 0, 1, 0, 0…
+$ Stroke               &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0…
+$ HeartDiseaseorAttack &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0…
+$ PhysActivity         &lt;dbl&gt; 0, 1, 0, 1, 1, 1, 0, 1, 0, 0, 1, 0, 0, 0, 1, 1, 1…
+$ Fruits               &lt;dbl&gt; 0, 0, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0, 0, 0, 0, 1…
+$ Veggies              &lt;dbl&gt; 1, 0, 0, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1…
+$ HvyAlcoholConsump    &lt;dbl&gt; 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0…
+$ AnyHealthcare        &lt;dbl&gt; 1, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1…
+$ NoDocbcCost          &lt;dbl&gt; 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0…
+$ GenHlth              &lt;dbl&gt; 5, 3, 5, 2, 2, 2, 3, 3, 5, 2, 3, 3, 3, 4, 4, 2, 3…
+$ MentHlth             &lt;dbl&gt; 18, 0, 30, 0, 3, 0, 0, 0, 30, 0, 0, 0, 0, 0, 30, …
+$ PhysHlth             &lt;dbl&gt; 15, 0, 30, 0, 0, 2, 14, 0, 30, 0, 0, 30, 15, 0, 2…
+$ DiffWalk             &lt;dbl&gt; 1, 0, 1, 0, 0, 0, 0, 1, 1, 0, 0, 1, 0, 1, 0, 0, 0…
+$ Sex                  &lt;dbl&gt; 0, 0, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0…
+$ Age                  &lt;dbl&gt; 9, 7, 9, 11, 11, 10, 9, 11, 9, 8, 13, 10, 7, 11, …
+$ Education            &lt;dbl&gt; 4, 6, 4, 3, 5, 6, 6, 4, 5, 4, 6, 5, 5, 4, 6, 6, 4…
+$ Income               &lt;dbl&gt; 3, 1, 8, 6, 4, 8, 7, 4, 1, 3, 8, 1, 7, 6, 2, 8, 3…</code></pre>
+</div>
+</div>
+</section>
+<section id="summary-statistics" class="level2" data-number="3.2">
+<h2 data-number="3.2" class="anchored" data-anchor-id="summary-statistics"><span class="header-section-number">3.2</span> Summary Statistics</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Data summary</caption>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Name</td>
+<td style="text-align: left;">df_full</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Number of rows</td>
+<td style="text-align: left;">253680</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Number of columns</td>
+<td style="text-align: left;">22</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">_______________________</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Column type frequency:</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">numeric</td>
+<td style="text-align: left;">22</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">________________________</td>
+<td style="text-align: left;"></td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Group variables</td>
+<td style="text-align: left;">None</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Variable type: numeric</strong></p>
+<table class="caption-top table table-sm table-striped small">
+<colgroup>
+<col style="width: 25%">
+<col style="width: 12%">
+<col style="width: 17%">
+<col style="width: 7%">
+<col style="width: 6%">
+<col style="width: 3%">
+<col style="width: 4%">
+<col style="width: 4%">
+<col style="width: 4%">
+<col style="width: 6%">
+<col style="width: 7%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">skim_variable</th>
+<th style="text-align: right;">n_missing</th>
+<th style="text-align: right;">complete_rate</th>
+<th style="text-align: right;">mean</th>
+<th style="text-align: right;">sd</th>
+<th style="text-align: right;">p0</th>
+<th style="text-align: right;">p25</th>
+<th style="text-align: right;">p50</th>
+<th style="text-align: right;">p75</th>
+<th style="text-align: right;">p100</th>
+<th style="text-align: left;">hist</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Diabetes_binary</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.14</td>
+<td style="text-align: right;">0.35</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">▇▁▁▁▁</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">HighBP</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.43</td>
+<td style="text-align: right;">0.49</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">▇▁▁▁▆</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">HighChol</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.42</td>
+<td style="text-align: right;">0.49</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">▇▁▁▁▆</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">CholCheck</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.96</td>
+<td style="text-align: right;">0.19</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">▁▁▁▁▇</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">BMI</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">28.38</td>
+<td style="text-align: right;">6.61</td>
+<td style="text-align: right;">12</td>
+<td style="text-align: right;">24</td>
+<td style="text-align: right;">27</td>
+<td style="text-align: right;">31</td>
+<td style="text-align: right;">98</td>
+<td style="text-align: left;">▇▅▁▁▁</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Smoker</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.44</td>
+<td style="text-align: right;">0.50</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">▇▁▁▁▆</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Stroke</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.04</td>
+<td style="text-align: right;">0.20</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">▇▁▁▁▁</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">HeartDiseaseorAttack</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.09</td>
+<td style="text-align: right;">0.29</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">▇▁▁▁▁</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">PhysActivity</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.76</td>
+<td style="text-align: right;">0.43</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">▂▁▁▁▇</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Fruits</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.63</td>
+<td style="text-align: right;">0.48</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">▅▁▁▁▇</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Veggies</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.81</td>
+<td style="text-align: right;">0.39</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">▂▁▁▁▇</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">HvyAlcoholConsump</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.06</td>
+<td style="text-align: right;">0.23</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">▇▁▁▁▁</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">AnyHealthcare</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.95</td>
+<td style="text-align: right;">0.22</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">▁▁▁▁▇</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">NoDocbcCost</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.08</td>
+<td style="text-align: right;">0.28</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">▇▁▁▁▁</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">GenHlth</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">2.51</td>
+<td style="text-align: right;">1.07</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: left;">▅▇▇▃▁</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">MentHlth</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">3.18</td>
+<td style="text-align: right;">7.41</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">2</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: left;">▇▁▁▁▁</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">PhysHlth</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">4.24</td>
+<td style="text-align: right;">8.72</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">3</td>
+<td style="text-align: right;">30</td>
+<td style="text-align: left;">▇▁▁▁▁</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">DiffWalk</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.17</td>
+<td style="text-align: right;">0.37</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">▇▁▁▁▂</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Sex</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">0.44</td>
+<td style="text-align: right;">0.50</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: left;">▇▁▁▁▆</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Age</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">8.03</td>
+<td style="text-align: right;">3.05</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">10</td>
+<td style="text-align: right;">13</td>
+<td style="text-align: left;">▂▃▇▇▆</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Education</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">5.05</td>
+<td style="text-align: right;">0.99</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">4</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: right;">6</td>
+<td style="text-align: left;">▁▁▅▅▇</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Income</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">6.05</td>
+<td style="text-align: right;">2.07</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">5</td>
+<td style="text-align: right;">7</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: right;">8</td>
+<td style="text-align: left;">▁▁▃▂▇</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+<section id="missing-values-assessment" class="level2" data-number="3.3">
+<h2 data-number="3.3" class="anchored" data-anchor-id="missing-values-assessment"><span class="header-section-number">3.3</span> Missing Values Assessment</h2>
+<p>No missing values were identified in either dataset. All 22 columns show a complete rate of 1.0 across all 253,680 observations. Imputation was therefore not required.</p>
+</section>
+<section id="outlier-review" class="level2" data-number="3.4">
+<h2 data-number="3.4" class="anchored" data-anchor-id="outlier-review"><span class="header-section-number">3.4</span> Outlier Review</h2>
+<p>BMI was examined for extreme values. The variable ranges from 12 to 98, with 2,175 observations above 50 and 805 above 60. A BMI of 98 is not physiologically plausible and likely reflects data entry errors. These extreme values were retained in the current reproducible workflow so that the code remains consistent with the supplied datasets. However, this issue should be documented as a limitation, and future iterations should compare the current approach against a capped or winsorized BMI feature.</p>
+<p>MentHlth and PhysHlth are heavily right-skewed with large spikes at zero — most respondents report no bad mental or physical health days. Both variables could benefit from recoding into a binary flag (any bad days vs.&nbsp;none) or buckets (none, some, many), depending on modeling needs.</p>
+</section>
+</section>
+<section id="exploratory-data-analysis" class="level1" data-number="4">
+<h1 data-number="4"><span class="header-section-number">4</span> Exploratory Data Analysis</h1>
+<p>Exploratory data analysis was conducted to understand the relationship between diabetes status and available predictors using the full binary dataset (n = 253,680). Both graphical and numerical summaries were produced.</p>
+<section id="diabetes-class-distribution" class="level2" data-number="4.1">
+<h2 data-number="4.1" class="anchored" data-anchor-id="diabetes-class-distribution"><span class="header-section-number">4.1</span> Diabetes Class Distribution</h2>
+<p>The response variable is heavily imbalanced. Only 13.9% of respondents (n = 35,346) reported diabetes, while 86.1% (n = 218,334) did not. This imbalance means raw accuracy is not a reliable evaluation metric — a model that always predicts “No Diabetes” would achieve 86% accuracy without detecting a single case. This is why ROC AUC and balanced accuracy are prioritized throughout.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Final_Project_Report-Team5_Full_files/figure-html/class-distribution-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="predictor-association-ranking" class="level2" data-number="4.2">
+<h2 data-number="4.2" class="anchored" data-anchor-id="predictor-association-ranking"><span class="header-section-number">4.2</span> Predictor Association Ranking</h2>
+<p>Before examining individual predictors, a ranked association table was computed. Cramér’s V (chi-squared based) was used for binary and ordinal predictors; Cohen’s d (standardized mean difference) was used for the three continuous predictors. These metrics are not on the same scale, so the ranking is approximate.</p>
+<p>BMI is the strongest single predictor (Cohen’s d = 0.641), followed by PhysHlth (d = 0.502), GenHlth (V = 0.299), HighBP (V = 0.263), and DiffWalk (V = 0.218). Lifestyle flags such as Fruits, Veggies, Smoker, and AnyHealthcare show weak individual associations and are unlikely to dominate feature importance charts, though they may still contribute within a full model.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Final_Project_Report-Team5_Full_files/figure-html/association-ranking-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="binary-predictors" class="level2" data-number="4.3">
+<h2 data-number="4.3" class="anchored" data-anchor-id="binary-predictors"><span class="header-section-number">4.3</span> Binary Predictors</h2>
+<p>Diabetes rates within each yes/no predictor were compared to identify which binary flags carry the most signal. HighBP (6.0% vs.&nbsp;24.4%), HeartDiseaseorAttack (12.0% vs.&nbsp;33.0%), Stroke (13.2% vs.&nbsp;31.8%), DiffWalk (10.5% vs.&nbsp;30.7%), and HighChol (8.0% vs.&nbsp;22.0%) all show rates more than double between the No and Yes groups. HvyAlcoholConsump shows an unexpected inverse pattern — heavy drinkers have a <em>lower</em> diabetes rate (5.8% vs.&nbsp;14.4%) — which likely reflects a survivorship or sampling artifact rather than a protective causal effect. Fruits, Veggies, and AnyHealthcare show minimal separation between groups.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Final_Project_Report-Team5_Full_files/figure-html/binary-predictors-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="continuous-predictor-analysis" class="level2" data-number="4.4">
+<h2 data-number="4.4" class="anchored" data-anchor-id="continuous-predictor-analysis"><span class="header-section-number">4.4</span> Continuous Predictor Analysis</h2>
+<p>Among the three continuous variables, BMI shows the clearest separation between classes: diabetic respondents average a BMI of 31.9 (median 31) versus 27.8 (median 27) for non-diabetics — a gap large enough to make BMI the single strongest predictor in the ranking above. PhysHlth and MentHlth also shift upward for the diabetic group (mean poor physical-health days of 8.0 vs.&nbsp;3.6; poor mental-health days of 4.5 vs.&nbsp;3.0), but both are dominated by a large spike at zero — most respondents report no bad days — which leaves them heavily right-skewed.</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Continuous predictors split by diabetes status</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">variable</th>
+<th style="text-align: left;">class</th>
+<th style="text-align: right;">mean</th>
+<th style="text-align: right;">median</th>
+<th style="text-align: right;">sd</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">BMI</td>
+<td style="text-align: left;">Diabetes</td>
+<td style="text-align: right;">31.94</td>
+<td style="text-align: right;">31</td>
+<td style="text-align: right;">7.36</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">BMI</td>
+<td style="text-align: left;">No Diabetes</td>
+<td style="text-align: right;">27.81</td>
+<td style="text-align: right;">27</td>
+<td style="text-align: right;">6.29</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">MentHlth</td>
+<td style="text-align: left;">Diabetes</td>
+<td style="text-align: right;">4.46</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">8.95</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">MentHlth</td>
+<td style="text-align: left;">No Diabetes</td>
+<td style="text-align: right;">2.98</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">7.11</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">PhysHlth</td>
+<td style="text-align: left;">Diabetes</td>
+<td style="text-align: right;">7.95</td>
+<td style="text-align: right;">1</td>
+<td style="text-align: right;">11.30</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">PhysHlth</td>
+<td style="text-align: left;">No Diabetes</td>
+<td style="text-align: right;">3.64</td>
+<td style="text-align: right;">0</td>
+<td style="text-align: right;">8.06</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Final_Project_Report-Team5_Full_files/figure-html/continuous-density-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The density plot confirms the BMI distribution shifting right for diabetics while retaining a long upper tail, and exposes the zero-inflation in PhysHlth and MentHlth. This skew — together with the implausible high-end BMI values flagged in the outlier review — motivates the alternative encodings (a binary “any bad days” flag, or none/some/many buckets) revisited in future work.</p>
+</section>
+<section id="ordinal-predictor-analysis" class="level2" data-number="4.5">
+<h2 data-number="4.5" class="anchored" data-anchor-id="ordinal-predictor-analysis"><span class="header-section-number">4.5</span> Ordinal Predictor Analysis</h2>
+<p>GenHlth displays the strongest and cleanest monotone relationship of any predictor: diabetes prevalence climbs from roughly 2.5% among respondents rating their general health “excellent” (level 1) to nearly 38% among those rating it “poor” (level 5). Age rises steadily through the middle brackets, peaking near 22% around ages 70–74 before dipping slightly in the oldest groups — likely a survivorship effect rather than declining risk. Education and Income trend in the opposite direction, with diabetes rates highest in the lowest brackets, consistent with the established link between socioeconomic status, healthcare access, and diet.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Final_Project_Report-Team5_Full_files/figure-html/ordinal-predictors-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="correlation-analysis" class="level2" data-number="4.6">
+<h2 data-number="4.6" class="anchored" data-anchor-id="correlation-analysis"><span class="header-section-number">4.6</span> Correlation Analysis</h2>
+<p>A Spearman correlation matrix across the 21 predictors was examined to check for redundancy that could destabilize the linear models. The largest pairwise correlations are moderate, not severe: Education–Income (0.45), GenHlth–PhysHlth (0.45), DiffWalk–GenHlth (0.42), and DiffWalk–PhysHlth (0.42). These reflect two intuitive clusters — a general-health group (GenHlth, PhysHlth, MentHlth, DiffWalk) and a socioeconomic group (Education, Income) — that partly measure the same underlying construct. Because no correlation approaches the level that signals problematic multicollinearity, all predictors were retained, with the understanding that the regularized and tree-based models handle residual redundancy directly.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Final_Project_Report-Team5_Full_files/figure-html/correlation-matrix-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="eda-summary" class="level2" data-number="4.7">
+<h2 data-number="4.7" class="anchored" data-anchor-id="eda-summary"><span class="header-section-number">4.7</span> EDA Summary</h2>
+<p>The exploratory analysis highlights four key patterns that directly inform the modeling strategy:</p>
+<ul>
+<li><strong>BMI</strong> is the strongest individual predictor; diabetic respondents have meaningfully higher BMI with a right-skewed distribution and implausible high-end values requiring preprocessing.</li>
+<li><strong>Comorbidity flags</strong> (HighBP, HighChol, HeartDiseaseorAttack, Stroke, DiffWalk) all show diabetes rates more than double in the positive group, making them collectively important even where individual association strengths are moderate.</li>
+<li><strong>General and physical health self-reports</strong> (GenHlth, PhysHlth) show strong monotone relationships with diabetes status and moderate inter-correlation, suggesting they may partially substitute for each other in regularized models.</li>
+<li><strong>Socioeconomic variables</strong> (Income, Education, Age) trend in expected directions and add independent signal beyond clinical indicators, though they are correlated with each other.</li>
+</ul>
+</section>
+</section>
+<section id="data-preparation-and-preprocessing" class="level1" data-number="5">
+<h1 data-number="5"><span class="header-section-number">5</span> Data Preparation and Preprocessing</h1>
+<section id="data-splitting" class="level2" data-number="5.1">
+<h2 data-number="5.1" class="anchored" data-anchor-id="data-splitting"><span class="header-section-number">5.1</span> Data Splitting</h2>
+<p>The 50/50 balanced dataset (n = 70,692) was used for modeling to provide equal class representation during training. A stratified 80/20 split was applied to preserve class balance across the training and test sets.</p>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Dataset</th>
+<th style="text-align: right;">Observations</th>
+<th style="text-align: right;">Diabetes %</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Training Set (80%)</td>
+<td style="text-align: right;">56,553</td>
+<td style="text-align: right;">50.0%</td>
+</tr>
+<tr class="even">
+<td>Testing Set (20%)</td>
+<td style="text-align: right;">14,139</td>
+<td style="text-align: right;">50.0%</td>
+</tr>
+</tbody>
+</table>
+<p>Cross-validation on the training set serves as the validation step; no separate held-out validation set was created beyond the test set. This approach follows the predictive modeling strategy described by Kuhn and Johnson (2013), where resampling is used for model tuning and a held-out test set is reserved for final performance estimation.</p>
+</section>
+<section id="feature-preparation" class="level2" data-number="5.2">
+<h2 data-number="5.2" class="anchored" data-anchor-id="feature-preparation"><span class="header-section-number">5.2</span> Feature Preparation</h2>
+<p>Preprocessing was implemented as a <code>recipes</code> pipeline fit exclusively on the training data to prevent data leakage. The pipeline includes:</p>
+<ul>
+<li>Removing zero-variance predictors (<code>step_zv</code>)</li>
+<li>Standardizing all numeric predictors to mean 0 and standard deviation 1 (<code>step_normalize</code>)</li>
+</ul>
+<p>Binary and ordinal variables were left as numeric for compatibility with all four modeling methods. No imputation was required given the absence of missing values.</p>
+</section>
+<section id="handling-correlated-features" class="level2" data-number="5.3">
+<h2 data-number="5.3" class="anchored" data-anchor-id="handling-correlated-features"><span class="header-section-number">5.3</span> Handling Correlated Features</h2>
+<p>Correlation analysis did not reveal multicollinearity severe enough to require predictor removal. All 21 predictors were retained. This decision preserves potentially useful clinical and behavioral information while allowing the modeling algorithms to handle redundancy differently. Elastic Net addresses correlated features through its combined L1/L2 penalty, while Random Forest and GBM are less sensitive to collinearity because splits are selected locally within tree structures.</p>
+</section>
+</section>
+<section id="model-strategy-and-justification" class="level1" data-number="6">
+<h1 data-number="6"><span class="header-section-number">6</span> Model Strategy and Justification</h1>
+<p>The modeling strategy was designed to compare an interpretable statistical baseline against increasingly flexible machine learning methods. This structure supports both prediction and interpretation, which is important in healthcare-related applications.</p>
+<section id="logistic-regression-as-baseline" class="level2" data-number="6.1">
+<h2 data-number="6.1" class="anchored" data-anchor-id="logistic-regression-as-baseline"><span class="header-section-number">6.1</span> Logistic Regression as Baseline</h2>
+<p>Logistic Regression was used as the baseline because it is transparent, efficient, and widely used for binary healthcare outcomes. It provides a useful benchmark and allows the direction of predictor effects to be interpreted through coefficients or odds ratios. Its limitation is that it assumes additive linear effects on the log-odds scale unless interactions or nonlinear terms are manually engineered.</p>
+</section>
+<section id="elastic-net-for-regularized-linear-modeling" class="level2" data-number="6.2">
+<h2 data-number="6.2" class="anchored" data-anchor-id="elastic-net-for-regularized-linear-modeling"><span class="header-section-number">6.2</span> Elastic Net for Regularized Linear Modeling</h2>
+<p>Elastic Net extends Logistic Regression by adding regularization. This is appropriate because several health-status predictors are moderately correlated, including general health, physical health, and difficulty walking. The L1 component can shrink weak predictors toward zero, while the L2 component stabilizes coefficient estimates when predictors overlap.</p>
+</section>
+<section id="random-forest-for-nonlinear-interactions" class="level2" data-number="6.3">
+<h2 data-number="6.3" class="anchored" data-anchor-id="random-forest-for-nonlinear-interactions"><span class="header-section-number">6.3</span> Random Forest for Nonlinear Interactions</h2>
+<p>Random Forest was included because diabetes risk may depend on interactions between risk factors, such as BMI, age, high blood pressure, cholesterol status, and general health. Unlike Logistic Regression, Random Forest can capture nonlinear and interaction effects without manually specifying them.</p>
+</section>
+<section id="gbm-for-sequential-error-correction" class="level2" data-number="6.4">
+<h2 data-number="6.4" class="anchored" data-anchor-id="gbm-for-sequential-error-correction"><span class="header-section-number">6.4</span> GBM for Sequential Error Correction</h2>
+<p>GBM was included as a second ensemble method because boosted trees often perform well on structured tabular datasets. GBM sequentially improves prediction by focusing on observations that earlier trees classified poorly. Because this flexibility can overfit, tuning and test-set evaluation are especially important.</p>
+</section>
+</section>
+<section id="baseline-model-logistic-regression" class="level1" data-number="7">
+<h1 data-number="7"><span class="header-section-number">7</span> Baseline Model: Logistic Regression</h1>
+<p>Logistic regression was selected as the baseline because it is interpretable, computationally efficient, and a standard benchmark in healthcare prediction. It assumes a linear relationship between the log-odds of diabetes and the predictors, which may underfit if important non-linear interactions exist.</p>
+<div class="cell">
+<div class="cell-output cell-output-stdout">
+<pre><code>Generalized Linear Model 
+
+56554 samples
+   21 predictor
+    2 classes: 'Diabetes', 'NoDiabetes' 
+
+No pre-processing
+Resampling: Cross-Validated (10 fold) 
+Summary of sample sizes: 45242, 45244, 45243, 45243, 45244 
+Resampling results:
+
+  ROC        Sens       Spec     
+  0.8240489  0.7677618  0.7286486</code></pre>
+</div>
+</div>
+<section id="baseline-model-performance" class="level2" data-number="7.1">
+<h2 data-number="7.1" class="anchored" data-anchor-id="baseline-model-performance"><span class="header-section-number">7.1</span> Baseline Model Performance</h2>
+<p>The logistic regression model provides a stable performance floor for comparison. Sensitivity and balanced accuracy are the primary metrics of interest given the clinical cost of false negatives (missed diabetes cases).</p>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Baseline logistic regression performance</caption>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Metric</th>
+<th style="text-align: right;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">ROC AUC</td>
+<td style="text-align: right;">0.8273</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Accuracy</td>
+<td style="text-align: right;">0.7473</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Balanced Accuracy</td>
+<td style="text-align: right;">0.7473</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Sensitivity</td>
+<td style="text-align: right;">0.7646</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Specificity</td>
+<td style="text-align: right;">0.7299</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</section>
+</section>
+<section id="model-development-and-tuning" class="level1" data-number="8">
+<h1 data-number="8"><span class="header-section-number">8</span> Model Development and Tuning</h1>
+<p>All models share the same 5-fold cross-validation setup and are optimized on ROC AUC to provide a consistent, threshold-independent comparison.</p>
+<section id="cross-validation-strategy" class="level2" data-number="8.1">
+<h2 data-number="8.1" class="anchored" data-anchor-id="cross-validation-strategy"><span class="header-section-number">8.1</span> Cross-Validation Strategy</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Parameter</th>
+<th style="text-align: right;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Method</td>
+<td style="text-align: right;">k-fold cross-validation</td>
+</tr>
+<tr class="even">
+<td>Number of Folds</td>
+<td style="text-align: right;">5</td>
+</tr>
+<tr class="odd">
+<td>Optimization Metric</td>
+<td style="text-align: right;">ROC AUC</td>
+</tr>
+<tr class="even">
+<td>Class Probability Output</td>
+<td style="text-align: right;">Enabled</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="elastic-net" class="level2" data-number="8.2">
+<h2 data-number="8.2" class="anchored" data-anchor-id="elastic-net"><span class="header-section-number">8.2</span> Elastic Net</h2>
+<p>Elastic Net combines L1 (lasso) and L2 (ridge) regularization, controlled by the mixing parameter alpha and the penalty strength lambda. This approach reduces overfitting, handles correlated predictors by shrinking their coefficients jointly, and can perform automatic variable selection by driving weak coefficients to zero. A 10-point tuning grid was searched over alpha and lambda combinations.</p>
+</section>
+<section id="random-forest" class="level2" data-number="8.3">
+<h2 data-number="8.3" class="anchored" data-anchor-id="random-forest"><span class="header-section-number">8.3</span> Random Forest</h2>
+<p>Random Forest builds an ensemble of de-correlated decision trees by randomly subsetting both observations and predictors at each split, then averages their predictions. This reduces variance relative to a single tree and captures non-linear relationships and variable interactions without explicit feature engineering. Hyperparameters (mtry, split rule, minimum node size) were first tuned on a 20% subsample of training data using 3-fold CV to reduce compute time, and the best configuration was then trained on the full training set using 300 trees.</p>
+</section>
+<section id="gradient-boosting-machine" class="level2" data-number="8.4">
+<h2 data-number="8.4" class="anchored" data-anchor-id="gradient-boosting-machine"><span class="header-section-number">8.4</span> Gradient Boosting Machine</h2>
+<p>GBM builds trees sequentially, with each new tree improving the errors of the previous ensemble. This iterative error-correction approach often yields strong predictive performance but requires careful tuning to avoid overfitting. The code below defines a candidate grid for number of trees, interaction depth, shrinkage, and minimum observations per node. In this draft version, the GBM chunk uses a placeholder configuration for runtime control.</p>
+</section>
+</section>
+<section id="validation-and-testing" class="level1" data-number="9">
+<h1 data-number="9"><span class="header-section-number">9</span> Validation and Testing</h1>
+<p>After tuning, all four models were evaluated on the held-out test set to estimate real-world performance on unseen data.</p>
+<section id="model-comparison" class="level2" data-number="9.1">
+<h2 data-number="9.1" class="anchored" data-anchor-id="model-comparison"><span class="header-section-number">9.1</span> Model Comparison</h2>
+<div class="cell">
+<div class="cell-output-display">
+<table class="caption-top table table-sm table-striped small">
+<caption>Test set performance across all models</caption>
+<colgroup>
+<col style="width: 25%">
+<col style="width: 10%">
+<col style="width: 11%">
+<col style="width: 22%">
+<col style="width: 15%">
+<col style="width: 15%">
+</colgroup>
+<thead>
+<tr class="header">
+<th style="text-align: left;">Model</th>
+<th style="text-align: right;">ROC AUC</th>
+<th style="text-align: right;">Accuracy</th>
+<th style="text-align: right;">Balanced Accuracy</th>
+<th style="text-align: right;">Sensitivity</th>
+<th style="text-align: right;">Specificity</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td style="text-align: left;">Logistic Regression</td>
+<td style="text-align: right;">0.8273</td>
+<td style="text-align: right;">0.7473</td>
+<td style="text-align: right;">0.7473</td>
+<td style="text-align: right;">0.7646</td>
+<td style="text-align: right;">0.7299</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">Elastic Net</td>
+<td style="text-align: right;">0.8273</td>
+<td style="text-align: right;">0.7476</td>
+<td style="text-align: right;">0.7476</td>
+<td style="text-align: right;">0.7650</td>
+<td style="text-align: right;">0.7302</td>
+</tr>
+<tr class="odd">
+<td style="text-align: left;">Random Forest</td>
+<td style="text-align: right;">0.8287</td>
+<td style="text-align: right;">0.7488</td>
+<td style="text-align: right;">0.7488</td>
+<td style="text-align: right;">0.7928</td>
+<td style="text-align: right;">0.7048</td>
+</tr>
+<tr class="even">
+<td style="text-align: left;">GBM</td>
+<td style="text-align: right;">0.8346</td>
+<td style="text-align: right;">0.7522</td>
+<td style="text-align: right;">0.7522</td>
+<td style="text-align: right;">0.7935</td>
+<td style="text-align: right;">0.7109</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<p>The final performance metrics demonstrate that all four modeling approaches possess strong, stable discriminative power on the held-out test set, with ROC AUC values hovering around 0.83. While the Gradient Boosting Machine (GBM) achieves the highest overall ROC AUC (0.8302) the baseline Logistic Regression model remains remarkably competitive, trailing the ensemble method by a negligible margin. This minimal delta in performance indicates that the log-odds of diabetes risk are largely characterized by additive, linear relationships among the predictors. Given the high stakes and need for transparency in clinical screening workflows, the structural simplicity and immediate interpretability of the Logistic Regression baseline may weigh heavily in favor of its selection over the marginal accuracy gains of the more complex tree-based ensembles.</p>
+</section>
+<section id="roc-curve-comparison" class="level2" data-number="9.2">
+<h2 data-number="9.2" class="anchored" data-anchor-id="roc-curve-comparison"><span class="header-section-number">9.2</span> ROC Curve Comparison</h2>
+<p>ROC curves were compared to assess each model’s ability to separate diabetic from non-diabetic individuals across all possible classification thresholds. A higher area under the curve indicates better discrimination. Tree-based models are expected to outperform linear approaches if non-linear feature interactions exist in the data.</p>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Final_Project_Report-Team5_Full_files/figure-html/roc-curves-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+</section>
+<section id="final-performance-metrics" class="level2" data-number="9.3">
+<h2 data-number="9.3" class="anchored" data-anchor-id="final-performance-metrics"><span class="header-section-number">9.3</span> Final Performance Metrics</h2>
+<table class="caption-top table">
+<thead>
+<tr class="header">
+<th>Metric</th>
+<th style="text-align: right;">Value</th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>ROC AUC</td>
+<td style="text-align: right;">0.8302</td>
+</tr>
+<tr class="even">
+<td>Accuracy</td>
+<td style="text-align: right;">0.7504</td>
+</tr>
+<tr class="odd">
+<td>Balanced Accuracy</td>
+<td style="text-align: right;">0.7504</td>
+</tr>
+<tr class="even">
+<td>Sensitivity</td>
+<td style="text-align: right;">0.7748</td>
+</tr>
+<tr class="odd">
+<td>Specificity</td>
+<td style="text-align: right;">0.7260</td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="variable-importance" class="level2" data-number="9.4">
+<h2 data-number="9.4" class="anchored" data-anchor-id="variable-importance"><span class="header-section-number">9.4</span> Variable Importance</h2>
+<div class="cell">
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="Final_Project_Report-Team5_Full_files/figure-html/important-predictors-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>Variable importance analysis identified General Health (GenHlth), High Blood Pressure (HighBP), Body Mass Index (BMI), Age, and High Cholesterol (HighChol) as the most influential predictors of diabetes status. These findings closely mirror the exploratory data analysis, where BMI, GenHlth, HighBP, and Age consistently demonstrated strong associations with diabetes prevalence. The agreement between EDA findings and model-derived importance rankings increases confidence that the model is capturing clinically meaningful risk factors rather than artifacts within the dataset. Furthermore, many of these variables are well-established predictors of diabetes in epidemiological and clinical research, supporting the practical relevance of the model’s predictions.</p>
+</section>
+</section>
+<section id="discussion-and-conclusions" class="level1" data-number="10">
+<h1 data-number="10"><span class="header-section-number">10</span> Discussion and Conclusions</h1>
+<p>The objective of this project was to determine whether diabetes status could be predicted using demographic, behavioral, and health-related indicators from the BRFSS dataset. Results confirm that predictive modeling can identify individuals at elevated diabetes risk using readily available survey-based health information.</p>
+<p>Across the analysis, BMI, general health self-rating, high blood pressure, physical health days, and difficulty walking emerged as the most informative predictors — consistent with established diabetes risk factors and with the EDA findings. Socioeconomic variables (income, education) provided additional signal beyond clinical indicators alone.</p>
+<p>From a practical healthcare perspective, these findings suggest that survey-based screening tools could help prioritize individuals for follow-up clinical evaluation. The model should not be interpreted as a diagnostic replacement. Rather, it could support early outreach by identifying respondents whose self-reported health profiles resemble those of individuals with diabetes.</p>
+<p>The final model, GBM (Gradient Boosting Machine), achieved a test set ROC AUC of 0.8302, indicating strong discriminative ability and substantially better performance than random classification, which would produce an ROC AUC of 0.50. While more complex models may marginally improve predictive accuracy, interpretability remains important in healthcare screening contexts.</p>
+<section id="limitations" class="level2" data-number="10.1">
+<h2 data-number="10.1" class="anchored" data-anchor-id="limitations"><span class="header-section-number">10.1</span> Limitations</h2>
+<ol type="1">
+<li>The dataset relies on self-reported survey responses, which may introduce recall and social desirability bias.</li>
+<li>The analysis is cross-sectional and cannot establish causal relationships between predictors and diabetes status.</li>
+<li>External validation was not performed on a separate BRFSS survey year or independent cohort.</li>
+<li>Clinical laboratory values (e.g., HbA1c, fasting glucose) and family history were not available and would likely improve predictive performance.</li>
+<li>The 50/50 balanced training dataset does not reflect real-world diabetes prevalence (~14%), so model calibration for deployment would require recalibration to the natural class distribution.</li>
+</ol>
+</section>
+<section id="future-work" class="level2" data-number="10.2">
+<h2 data-number="10.2" class="anchored" data-anchor-id="future-work"><span class="header-section-number">10.2</span> Future Work</h2>
+<ul>
+<li>Test additional gradient boosting implementations (XGBoost, LightGBM) with broader hyperparameter grids.</li>
+<li>Evaluate cost-sensitive classification or threshold optimization tuned to minimize false negatives specifically.</li>
+<li>Perform external validation on a different BRFSS year to assess temporal generalizability.</li>
+<li>Incorporate clinical variables if available to assess incremental predictive gain.</li>
+<li>Explore recoding of MentHlth and PhysHlth (e.g., binary flags for any bad days) and examine impact on model performance.</li>
+</ul>
+</section>
+<section id="conclusion" class="level2" data-number="10.3">
+<h2 data-number="10.3" class="anchored" data-anchor-id="conclusion"><span class="header-section-number">10.3</span> Conclusion</h2>
+<p>This project demonstrates that diabetes status can be predicted with meaningful accuracy using behavioral and health-related indicators from the BRFSS survey. The modeling results suggest that predictive analytics could serve as a low-cost screening support tool for identifying individuals who may benefit from earlier preventive care or clinical follow-up, without requiring clinical laboratory testing.</p>
+</section>
+</section>
+<section id="references" class="level1" data-number="11">
+<h1 data-number="11"><span class="header-section-number">11</span> References</h1>
+<p>Centers for Disease Control and Prevention. (2015). <em>Behavioral Risk Factor Surveillance System survey data</em>. U.S. Department of Health and Human Services.</p>
+<p>Centers for Disease Control and Prevention. (2024). National diabetes statistics report. U.S. Department of Health and Human Services. https://www.cdc.gov/diabetes/data/statistics-report</p>
+<p>Kuhn, M., &amp; Johnson, K. (2013). <em>Applied predictive modeling</em>. Springer.</p>
+<p>Teboul, A. (2023). Diabetes health indicators dataset. Kaggle. https://www.kaggle.com/datasets/alexteboul/diabetes-health-indicators-dataset</p>
+</section>
+<section id="appendix-reproducible-r-code" class="level1" data-number="12">
+<h1 data-number="12"><span class="header-section-number">12</span> Appendix: Reproducible R Code</h1>
+<p>The appendix contains the complete reproducible R code used for exploratory data analysis, preprocessing, model training, tuning, and final evaluation. All chunks use <code>echo=TRUE, eval=FALSE</code> so the code is visible without re-executing during rendering.</p>
+<section id="a.1-library-setup" class="level2" data-number="12.1">
+<h2 data-number="12.1" class="anchored" data-anchor-id="a.1-library-setup"><span class="header-section-number">12.1</span> A.1 Library Setup</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb3"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(tidyverse); <span class="fu">library</span>(skimr); <span class="fu">library</span>(corrplot)</span>
+<span id="cb3-2"><a href="#cb3-2" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(patchwork); <span class="fu">library</span>(scales); <span class="fu">library</span>(knitr)</span>
+<span id="cb3-3"><a href="#cb3-3" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(caret); <span class="fu">library</span>(recipes); <span class="fu">library</span>(yardstick)</span>
+<span id="cb3-4"><a href="#cb3-4" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(pROC); <span class="fu">library</span>(doParallel); <span class="fu">library</span>(glmnet)</span>
+<span id="cb3-5"><a href="#cb3-5" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ranger); <span class="fu">library</span>(gbm)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="a.2-data-loading-and-encoding" class="level2" data-number="12.2">
+<h2 data-number="12.2" class="anchored" data-anchor-id="a.2-data-loading-and-encoding"><span class="header-section-number">12.2</span> A.2 Data Loading and Encoding</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb4"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb4-1"><a href="#cb4-1" aria-hidden="true" tabindex="-1"></a>df_full  <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"../Raw Data/diabetes_binary_health_indicators_BRFSS2015.csv"</span>)</span>
+<span id="cb4-2"><a href="#cb4-2" aria-hidden="true" tabindex="-1"></a>df_model <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"../Raw Data/diabetes_binary_5050split_health_indicators_BRFSS2015.csv"</span>) <span class="sc">|&gt;</span></span>
+<span id="cb4-3"><a href="#cb4-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">Diabetes_binary =</span> <span class="fu">factor</span>(Diabetes_binary, <span class="at">levels =</span> <span class="fu">c</span>(<span class="dv">0</span>,<span class="dv">1</span>),</span>
+<span id="cb4-4"><a href="#cb4-4" aria-hidden="true" tabindex="-1"></a>                                  <span class="at">labels =</span> <span class="fu">c</span>(<span class="st">"No Diabetes"</span>,<span class="st">"Diabetes"</span>)))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="a.3-exploratory-data-analysis" class="level2" data-number="12.3">
+<h2 data-number="12.3" class="anchored" data-anchor-id="a.3-exploratory-data-analysis"><span class="header-section-number">12.3</span> A.3 Exploratory Data Analysis</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Class distribution</span></span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>df_full <span class="sc">|&gt;</span></span>
+<span id="cb5-3"><a href="#cb5-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">label =</span> <span class="fu">if_else</span>(Diabetes_binary <span class="sc">==</span> <span class="dv">1</span>, <span class="st">"Diabetes"</span>, <span class="st">"No Diabetes"</span>)) <span class="sc">|&gt;</span></span>
+<span id="cb5-4"><a href="#cb5-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(label) <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">pct =</span> n <span class="sc">/</span> <span class="fu">sum</span>(n))</span>
+<span id="cb5-5"><a href="#cb5-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb5-6"><a href="#cb5-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Association ranking (Cramér's V and Cohen's d) — see full code in Section 4.2</span></span>
+<span id="cb5-7"><a href="#cb5-7" aria-hidden="true" tabindex="-1"></a><span class="co"># Binary predictor rates — see full code in Section 4.3</span></span>
+<span id="cb5-8"><a href="#cb5-8" aria-hidden="true" tabindex="-1"></a><span class="co"># Continuous predictor densities — see full code in Section 4.4</span></span>
+<span id="cb5-9"><a href="#cb5-9" aria-hidden="true" tabindex="-1"></a><span class="co"># Ordinal predictor rates — see full code in Section 4.5</span></span>
+<span id="cb5-10"><a href="#cb5-10" aria-hidden="true" tabindex="-1"></a><span class="co"># Spearman correlation matrix — see full code in Section 4.6</span></span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="a.4-data-splitting-and-preprocessing" class="level2" data-number="12.4">
+<h2 data-number="12.4" class="anchored" data-anchor-id="a.4-data-splitting-and-preprocessing"><span class="header-section-number">12.4</span> A.4 Data Splitting and Preprocessing</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">503</span>)</span>
+<span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>split_index <span class="ot">&lt;-</span> <span class="fu">createDataPartition</span>(df_model<span class="sc">$</span>Diabetes_binary, <span class="at">p =</span> <span class="fl">0.80</span>, <span class="at">list =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>train_data  <span class="ot">&lt;-</span> df_model[split_index, ]</span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>test_data   <span class="ot">&lt;-</span> df_model[<span class="sc">-</span>split_index, ]</span>
+<span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>diabetes_recipe <span class="ot">&lt;-</span> <span class="fu">recipe</span>(Diabetes_binary <span class="sc">~</span> ., <span class="at">data =</span> train_data) <span class="sc">|&gt;</span></span>
+<span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  <span class="fu">step_zv</span>(<span class="fu">all_predictors</span>()) <span class="sc">|&gt;</span></span>
+<span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">step_normalize</span>(<span class="fu">all_numeric_predictors</span>())</span>
+<span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a>diabetes_prep   <span class="ot">&lt;-</span> <span class="fu">prep</span>(diabetes_recipe, <span class="at">training =</span> train_data)</span>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>train_processed <span class="ot">&lt;-</span> <span class="fu">bake</span>(diabetes_prep, <span class="at">new_data =</span> train_data)</span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>test_processed  <span class="ot">&lt;-</span> <span class="fu">bake</span>(diabetes_prep, <span class="at">new_data =</span> test_data)</span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a><span class="co"># Caret-compatible labels and matrix format</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>recode_target <span class="ot">&lt;-</span> <span class="cf">function</span>(d) {</span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>  d <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">Diabetes_binary =</span> <span class="fu">factor</span>(</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>    <span class="fu">ifelse</span>(<span class="fu">as.character</span>(Diabetes_binary) <span class="sc">==</span> <span class="st">"Diabetes"</span>, <span class="st">"Diabetes"</span>, <span class="st">"NoDiabetes"</span>),</span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>    <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"Diabetes"</span>, <span class="st">"NoDiabetes"</span>)</span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>  ))</span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>train_cv <span class="ot">&lt;-</span> <span class="fu">recode_target</span>(train_processed)</span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>test_cv  <span class="ot">&lt;-</span> <span class="fu">recode_target</span>(test_processed)</span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>train_x    <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(train_cv[, <span class="fu">colnames</span>(train_cv) <span class="sc">!=</span> <span class="st">"Diabetes_binary"</span>])</span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>test_x     <span class="ot">&lt;-</span> <span class="fu">as.matrix</span>(test_cv[, <span class="fu">colnames</span>(test_cv) <span class="sc">!=</span> <span class="st">"Diabetes_binary"</span>])</span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>train_y    <span class="ot">&lt;-</span> train_cv<span class="sc">$</span>Diabetes_binary</span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>test_y     <span class="ot">&lt;-</span> test_cv<span class="sc">$</span>Diabetes_binary</span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>x_train_df <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(<span class="fu">predict</span>(<span class="fu">preProcess</span>(train_x, <span class="at">method =</span> <span class="fu">c</span>(<span class="st">"zv"</span>,<span class="st">"center"</span>,<span class="st">"scale"</span>)), train_x))</span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>x_test_df  <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(<span class="fu">predict</span>(<span class="fu">preProcess</span>(train_x, <span class="at">method =</span> <span class="fu">c</span>(<span class="st">"zv"</span>,<span class="st">"center"</span>,<span class="st">"scale"</span>)), test_x))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="a.5-cross-validation-setup" class="level2" data-number="12.5">
+<h2 data-number="12.5" class="anchored" data-anchor-id="a.5-cross-validation-setup"><span class="header-section-number">12.5</span> A.5 Cross-Validation Setup</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb7"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">503</span>)</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>cv_index <span class="ot">&lt;-</span> <span class="fu">createFolds</span>(train_cv<span class="sc">$</span>Diabetes_binary, <span class="at">k =</span> <span class="dv">5</span>, <span class="at">returnTrain =</span> <span class="cn">TRUE</span>)</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a>ctrl <span class="ot">&lt;-</span> <span class="fu">trainControl</span>(</span>
+<span id="cb7-4"><a href="#cb7-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">method =</span> <span class="st">"cv"</span>, <span class="at">index =</span> cv_index,</span>
+<span id="cb7-5"><a href="#cb7-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">classProbs =</span> <span class="cn">TRUE</span>, <span class="at">summaryFunction =</span> twoClassSummary,</span>
+<span id="cb7-6"><a href="#cb7-6" aria-hidden="true" tabindex="-1"></a>  <span class="at">savePredictions =</span> <span class="st">"final"</span>, <span class="at">verboseIter =</span> <span class="cn">FALSE</span></span>
+<span id="cb7-7"><a href="#cb7-7" aria-hidden="true" tabindex="-1"></a>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="a.6-logistic-regression" class="level2" data-number="12.6">
+<h2 data-number="12.6" class="anchored" data-anchor-id="a.6-logistic-regression"><span class="header-section-number">12.6</span> A.6 Logistic Regression</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb8"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb8-1"><a href="#cb8-1" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">503</span>)</span>
+<span id="cb8-2"><a href="#cb8-2" aria-hidden="true" tabindex="-1"></a>mod_glm <span class="ot">&lt;-</span> <span class="fu">train</span>(<span class="at">x =</span> x_train_df, <span class="at">y =</span> train_y,</span>
+<span id="cb8-3"><a href="#cb8-3" aria-hidden="true" tabindex="-1"></a>                 <span class="at">method =</span> <span class="st">"glm"</span>, <span class="at">family =</span> binomial,</span>
+<span id="cb8-4"><a href="#cb8-4" aria-hidden="true" tabindex="-1"></a>                 <span class="at">metric =</span> <span class="st">"ROC"</span>, <span class="at">trControl =</span> ctrl)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="a.7-elastic-net" class="level2" data-number="12.7">
+<h2 data-number="12.7" class="anchored" data-anchor-id="a.7-elastic-net"><span class="header-section-number">12.7</span> A.7 Elastic Net</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb9"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb9-1"><a href="#cb9-1" aria-hidden="true" tabindex="-1"></a>cl <span class="ot">&lt;-</span> <span class="fu">makePSOCKcluster</span>(<span class="fu">max</span>(<span class="dv">1</span>, <span class="fu">detectCores</span>() <span class="sc">-</span> <span class="dv">1</span>))</span>
+<span id="cb9-2"><a href="#cb9-2" aria-hidden="true" tabindex="-1"></a><span class="fu">registerDoParallel</span>(cl)</span>
+<span id="cb9-3"><a href="#cb9-3" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">503</span>)</span>
+<span id="cb9-4"><a href="#cb9-4" aria-hidden="true" tabindex="-1"></a>mod_glmnet <span class="ot">&lt;-</span> <span class="fu">train</span>(<span class="at">x =</span> x_train_df, <span class="at">y =</span> train_y,</span>
+<span id="cb9-5"><a href="#cb9-5" aria-hidden="true" tabindex="-1"></a>                    <span class="at">method =</span> <span class="st">"glmnet"</span>, <span class="at">metric =</span> <span class="st">"ROC"</span>,</span>
+<span id="cb9-6"><a href="#cb9-6" aria-hidden="true" tabindex="-1"></a>                    <span class="at">trControl =</span> ctrl, <span class="at">tuneLength =</span> <span class="dv">10</span>)</span>
+<span id="cb9-7"><a href="#cb9-7" aria-hidden="true" tabindex="-1"></a><span class="fu">stopCluster</span>(cl); <span class="fu">registerDoSEQ</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="a.8-random-forest" class="level2" data-number="12.8">
+<h2 data-number="12.8" class="anchored" data-anchor-id="a.8-random-forest"><span class="header-section-number">12.8</span> A.8 Random Forest</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb10"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb10-1"><a href="#cb10-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Hyperparameter tuning on 20% subsample</span></span>
+<span id="cb10-2"><a href="#cb10-2" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">503</span>)</span>
+<span id="cb10-3"><a href="#cb10-3" aria-hidden="true" tabindex="-1"></a>tune_index  <span class="ot">&lt;-</span> <span class="fu">createDataPartition</span>(train_cv<span class="sc">$</span>Diabetes_binary, <span class="at">p =</span> <span class="fl">0.20</span>, <span class="at">list =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb10-4"><a href="#cb10-4" aria-hidden="true" tabindex="-1"></a>x_tune_df   <span class="ot">&lt;-</span> <span class="fu">as.data.frame</span>(train_cv[tune_index, <span class="fu">colnames</span>(train_cv) <span class="sc">!=</span> <span class="st">"Diabetes_binary"</span>])</span>
+<span id="cb10-5"><a href="#cb10-5" aria-hidden="true" tabindex="-1"></a>y_tune      <span class="ot">&lt;-</span> train_cv<span class="sc">$</span>Diabetes_binary[tune_index]</span>
+<span id="cb10-6"><a href="#cb10-6" aria-hidden="true" tabindex="-1"></a>tune_ctrl   <span class="ot">&lt;-</span> <span class="fu">trainControl</span>(<span class="at">method =</span> <span class="st">"cv"</span>, <span class="at">number =</span> <span class="dv">3</span>, <span class="at">classProbs =</span> <span class="cn">TRUE</span>,</span>
+<span id="cb10-7"><a href="#cb10-7" aria-hidden="true" tabindex="-1"></a>                            <span class="at">summaryFunction =</span> twoClassSummary)</span>
+<span id="cb10-8"><a href="#cb10-8" aria-hidden="true" tabindex="-1"></a>mod_rf_tune <span class="ot">&lt;-</span> <span class="fu">train</span>(<span class="at">x =</span> x_tune_df, <span class="at">y =</span> y_tune, <span class="at">method =</span> <span class="st">"ranger"</span>, <span class="at">metric =</span> <span class="st">"ROC"</span>,</span>
+<span id="cb10-9"><a href="#cb10-9" aria-hidden="true" tabindex="-1"></a>                     <span class="at">trControl =</span> tune_ctrl, <span class="at">tuneLength =</span> <span class="dv">3</span>,</span>
+<span id="cb10-10"><a href="#cb10-10" aria-hidden="true" tabindex="-1"></a>                     <span class="at">num.trees =</span> <span class="dv">150</span>, <span class="at">importance =</span> <span class="st">"impurity"</span>, <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span>
+<span id="cb10-11"><a href="#cb10-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb10-12"><a href="#cb10-12" aria-hidden="true" tabindex="-1"></a><span class="co"># Final model on full training data</span></span>
+<span id="cb10-13"><a href="#cb10-13" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">503</span>)</span>
+<span id="cb10-14"><a href="#cb10-14" aria-hidden="true" tabindex="-1"></a>mod_rf <span class="ot">&lt;-</span> <span class="fu">train</span>(<span class="at">x =</span> x_train_df, <span class="at">y =</span> train_y, <span class="at">method =</span> <span class="st">"ranger"</span>, <span class="at">metric =</span> <span class="st">"ROC"</span>,</span>
+<span id="cb10-15"><a href="#cb10-15" aria-hidden="true" tabindex="-1"></a>                <span class="at">trControl =</span> ctrl, <span class="at">num.trees =</span> <span class="dv">300</span>, <span class="at">importance =</span> <span class="st">"impurity"</span>,</span>
+<span id="cb10-16"><a href="#cb10-16" aria-hidden="true" tabindex="-1"></a>                <span class="at">tuneGrid =</span> mod_rf_tune<span class="sc">$</span>bestTune, <span class="at">verbose =</span> <span class="cn">FALSE</span>)</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="a.9-gradient-boosting-machine" class="level2" data-number="12.9">
+<h2 data-number="12.9" class="anchored" data-anchor-id="a.9-gradient-boosting-machine"><span class="header-section-number">12.9</span> A.9 Gradient Boosting Machine</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb11"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb11-1"><a href="#cb11-1" aria-hidden="true" tabindex="-1"></a>gbm_grid <span class="ot">&lt;-</span> <span class="fu">expand.grid</span>(</span>
+<span id="cb11-2"><a href="#cb11-2" aria-hidden="true" tabindex="-1"></a>  <span class="at">n.trees           =</span> <span class="fu">seq</span>(<span class="dv">150</span>, <span class="dv">300</span>, <span class="at">by =</span> <span class="dv">75</span>),</span>
+<span id="cb11-3"><a href="#cb11-3" aria-hidden="true" tabindex="-1"></a>  <span class="at">interaction.depth =</span> <span class="fu">seq</span>(<span class="dv">1</span>, <span class="dv">5</span>, <span class="at">by =</span> <span class="dv">2</span>),</span>
+<span id="cb11-4"><a href="#cb11-4" aria-hidden="true" tabindex="-1"></a>  <span class="at">shrinkage         =</span> <span class="fl">0.1</span>, </span>
+<span id="cb11-5"><a href="#cb11-5" aria-hidden="true" tabindex="-1"></a>  <span class="at">n.minobsinnode    =</span> <span class="dv">50</span></span>
+<span id="cb11-6"><a href="#cb11-6" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb11-7"><a href="#cb11-7" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-8"><a href="#cb11-8" aria-hidden="true" tabindex="-1"></a>cl <span class="ot">&lt;-</span> <span class="fu">makePSOCKcluster</span>(<span class="fu">max</span>(<span class="dv">1</span>, <span class="fu">detectCores</span>() <span class="sc">-</span> <span class="dv">1</span>))</span>
+<span id="cb11-9"><a href="#cb11-9" aria-hidden="true" tabindex="-1"></a><span class="fu">registerDoParallel</span>(cl)</span>
+<span id="cb11-10"><a href="#cb11-10" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-11"><a href="#cb11-11" aria-hidden="true" tabindex="-1"></a><span class="fu">set.seed</span>(<span class="dv">503</span>)</span>
+<span id="cb11-12"><a href="#cb11-12" aria-hidden="true" tabindex="-1"></a>mod_gbm <span class="ot">&lt;-</span> <span class="fu">train</span>(</span>
+<span id="cb11-13"><a href="#cb11-13" aria-hidden="true" tabindex="-1"></a>  <span class="at">x         =</span> x_train_df, </span>
+<span id="cb11-14"><a href="#cb11-14" aria-hidden="true" tabindex="-1"></a>  <span class="at">y         =</span> train_y, </span>
+<span id="cb11-15"><a href="#cb11-15" aria-hidden="true" tabindex="-1"></a>  <span class="at">method    =</span> <span class="st">"gbm"</span>, </span>
+<span id="cb11-16"><a href="#cb11-16" aria-hidden="true" tabindex="-1"></a>  <span class="at">metric    =</span> <span class="st">"ROC"</span>,</span>
+<span id="cb11-17"><a href="#cb11-17" aria-hidden="true" tabindex="-1"></a>  <span class="at">trControl =</span> ctrl, </span>
+<span id="cb11-18"><a href="#cb11-18" aria-hidden="true" tabindex="-1"></a>  <span class="at">tuneGrid  =</span> gbm_grid, </span>
+<span id="cb11-19"><a href="#cb11-19" aria-hidden="true" tabindex="-1"></a>  <span class="at">verbose   =</span> <span class="cn">FALSE</span></span>
+<span id="cb11-20"><a href="#cb11-20" aria-hidden="true" tabindex="-1"></a>)</span>
+<span id="cb11-21"><a href="#cb11-21" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb11-22"><a href="#cb11-22" aria-hidden="true" tabindex="-1"></a><span class="fu">stopCluster</span>(cl)</span>
+<span id="cb11-23"><a href="#cb11-23" aria-hidden="true" tabindex="-1"></a><span class="fu">registerDoSEQ</span>()</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+<section id="a.10-final-evaluation" class="level2" data-number="12.10">
+<h2 data-number="12.10" class="anchored" data-anchor-id="a.10-final-evaluation"><span class="header-section-number">12.10</span> A.10 Final Evaluation</h2>
+<div class="cell">
+<details class="code-fold">
+<summary>Code</summary>
+<div class="code-copy-outer-scaffold"><div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a>eval_model <span class="ot">&lt;-</span> <span class="cf">function</span>(mod, xtest, ytest) {</span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>  probs <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod, <span class="at">newdata =</span> xtest, <span class="at">type =</span> <span class="st">"prob"</span>)[, <span class="st">"Diabetes"</span>]</span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  preds <span class="ot">&lt;-</span> <span class="fu">predict</span>(mod, <span class="at">newdata =</span> xtest)</span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  cm    <span class="ot">&lt;-</span> <span class="fu">confusionMatrix</span>(preds, ytest, <span class="at">positive =</span> <span class="st">"Diabetes"</span>)</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">tibble</span>(</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">ROC AUC</span><span class="st">`</span>           <span class="ot">=</span> <span class="fu">as.numeric</span>(<span class="fu">auc</span>(<span class="fu">roc</span>(ytest, probs, <span class="at">levels =</span> <span class="fu">c</span>(<span class="st">"NoDiabetes"</span>,<span class="st">"Diabetes"</span>)))),</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">Accuracy            =</span> cm<span class="sc">$</span>overall[<span class="st">"Accuracy"</span>],</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a>    <span class="st">`</span><span class="at">Balanced Accuracy</span><span class="st">`</span> <span class="ot">=</span> cm<span class="sc">$</span>byClass[<span class="st">"Balanced Accuracy"</span>],</span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>    <span class="at">Sensitivity         =</span> cm<span class="sc">$</span>byClass[<span class="st">"Sensitivity"</span>],</span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">Specificity         =</span> cm<span class="sc">$</span>byClass[<span class="st">"Specificity"</span>]</span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a>}</span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a><span class="fu">bind_rows</span>(</span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">eval_model</span>(mod_glm,    x_test_df, test_y) <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">Model =</span> <span class="st">"Logistic Regression"</span>),</span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">eval_model</span>(mod_glmnet, x_test_df, test_y) <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">Model =</span> <span class="st">"Elastic Net"</span>),</span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">eval_model</span>(mod_rf,     x_test_df, test_y) <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">Model =</span> <span class="st">"Random Forest"</span>),</span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">eval_model</span>(mod_gbm,    x_test_df, test_y) <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="at">Model =</span> <span class="st">"GBM"</span>)</span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>) <span class="sc">|&gt;</span> <span class="fu">select</span>(Model, <span class="fu">everything</span>()) <span class="sc">|&gt;</span> <span class="fu">mutate</span>(<span class="fu">across</span>(<span class="fu">where</span>(is.numeric), <span class="sc">~</span><span class="fu">round</span>(.x, <span class="dv">4</span>)))</span></code></pre></div><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></div>
+</details>
+</div>
+</section>
+</section>
+
+</main>
+<!-- /main column -->
+<script id="quarto-html-after-body" type="application/javascript">
+  window.document.addEventListener("DOMContentLoaded", function (event) {
+    const icon = "";
+    const anchorJS = new window.AnchorJS();
+    anchorJS.options = {
+      placement: 'right',
+      icon: icon
+    };
+    anchorJS.add('.anchored');
+    const isCodeAnnotation = (el) => {
+      for (const clz of el.classList) {
+        if (clz.startsWith('code-annotation-')) {                     
+          return true;
+        }
+      }
+      return false;
+    }
+    const onCopySuccess = function(e) {
+      // button target
+      const button = e.trigger;
+      // don't keep focus
+      button.blur();
+      // flash "checked"
+      button.classList.add('code-copy-button-checked');
+      var currentTitle = button.getAttribute("title");
+      button.setAttribute("title", "Copied!");
+      let tooltip;
+      if (window.bootstrap) {
+        button.setAttribute("data-bs-toggle", "tooltip");
+        button.setAttribute("data-bs-placement", "left");
+        button.setAttribute("data-bs-title", "Copied!");
+        tooltip = new bootstrap.Tooltip(button, 
+          { trigger: "manual", 
+            customClass: "code-copy-button-tooltip",
+            offset: [0, -8]});
+        tooltip.show();    
+      }
+      setTimeout(function() {
+        if (tooltip) {
+          tooltip.hide();
+          button.removeAttribute("data-bs-title");
+          button.removeAttribute("data-bs-toggle");
+          button.removeAttribute("data-bs-placement");
+        }
+        button.setAttribute("title", currentTitle);
+        button.classList.remove('code-copy-button-checked');
+      }, 1000);
+      // clear code selection
+      e.clearSelection();
+    }
+    const getTextToCopy = function(trigger) {
+      const outerScaffold = trigger.parentElement.cloneNode(true);
+      const codeEl = outerScaffold.querySelector('code');
+      for (const childEl of codeEl.children) {
+        if (isCodeAnnotation(childEl)) {
+          childEl.remove();
+        }
+      }
+      return codeEl.innerText;
+    }
+    const clipboard = new window.ClipboardJS('.code-copy-button:not([data-in-quarto-modal])', {
+      text: getTextToCopy
+    });
+    clipboard.on('success', onCopySuccess);
+    if (window.document.getElementById('quarto-embedded-source-code-modal')) {
+      const clipboardModal = new window.ClipboardJS('.code-copy-button[data-in-quarto-modal]', {
+        text: getTextToCopy,
+        container: window.document.getElementById('quarto-embedded-source-code-modal')
+      });
+      clipboardModal.on('success', onCopySuccess);
+    }
+      var localhostRegex = new RegExp(/^(?:http|https):\/\/localhost\:?[0-9]*\//);
+      var mailtoRegex = new RegExp(/^mailto:/);
+        var filterRegex = new RegExp('/' + window.location.host + '/');
+      var isInternal = (href) => {
+          return filterRegex.test(href) || localhostRegex.test(href) || mailtoRegex.test(href);
+      }
+      // Inspect non-navigation links and adorn them if external
+     var links = window.document.querySelectorAll('a[href]:not(.nav-link):not(.navbar-brand):not(.toc-action):not(.sidebar-link):not(.sidebar-item-toggle):not(.pagination-link):not(.no-external):not([aria-hidden]):not(.dropdown-item):not(.quarto-navigation-tool):not(.about-link)');
+      for (var i=0; i<links.length; i++) {
+        const link = links[i];
+        if (!isInternal(link.href)) {
+          // undo the damage that might have been done by quarto-nav.js in the case of
+          // links that we want to consider external
+          if (link.dataset.originalHref !== undefined) {
+            link.href = link.dataset.originalHref;
+          }
+        }
+      }
+    function tippyHover(el, contentFn, onTriggerFn, onUntriggerFn) {
+      const config = {
+        allowHTML: true,
+        maxWidth: 500,
+        delay: 100,
+        arrow: false,
+        appendTo: function(el) {
+            return el.parentElement;
+        },
+        interactive: true,
+        interactiveBorder: 10,
+        theme: 'quarto',
+        placement: 'bottom-start',
+      };
+      if (contentFn) {
+        config.content = contentFn;
+      }
+      if (onTriggerFn) {
+        config.onTrigger = onTriggerFn;
+      }
+      if (onUntriggerFn) {
+        config.onUntrigger = onUntriggerFn;
+      }
+      window.tippy(el, config); 
+    }
+    const noterefs = window.document.querySelectorAll('a[role="doc-noteref"]');
+    for (var i=0; i<noterefs.length; i++) {
+      const ref = noterefs[i];
+      tippyHover(ref, function() {
+        // use id or data attribute instead here
+        let href = ref.getAttribute('data-footnote-href') || ref.getAttribute('href');
+        try { href = new URL(href).hash; } catch {}
+        const id = href.replace(/^#\/?/, "");
+        const note = window.document.getElementById(id);
+        if (note) {
+          return note.innerHTML;
+        } else {
+          return "";
+        }
+      });
+    }
+    const xrefs = window.document.querySelectorAll('a.quarto-xref');
+    const processXRef = (id, note) => {
+      // Strip column container classes
+      const stripColumnClz = (el) => {
+        el.classList.remove("page-full", "page-columns");
+        if (el.children) {
+          for (const child of el.children) {
+            stripColumnClz(child);
+          }
+        }
+      }
+      stripColumnClz(note)
+      if (id === null || id.startsWith('sec-')) {
+        // Special case sections, only their first couple elements
+        const container = document.createElement("div");
+        if (note.children && note.children.length > 2) {
+          container.appendChild(note.children[0].cloneNode(true));
+          for (let i = 1; i < note.children.length; i++) {
+            const child = note.children[i];
+            if (child.tagName === "P" && child.innerText === "") {
+              continue;
+            } else {
+              container.appendChild(child.cloneNode(true));
+              break;
+            }
+          }
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(container);
+          }
+          return container.innerHTML
+        } else {
+          if (window.Quarto?.typesetMath) {
+            window.Quarto.typesetMath(note);
+          }
+          return note.innerHTML;
+        }
+      } else {
+        // Remove any anchor links if they are present
+        const anchorLink = note.querySelector('a.anchorjs-link');
+        if (anchorLink) {
+          anchorLink.remove();
+        }
+        if (window.Quarto?.typesetMath) {
+          window.Quarto.typesetMath(note);
+        }
+        if (note.classList.contains("callout")) {
+          return note.outerHTML;
+        } else {
+          return note.innerHTML;
+        }
+      }
+    }
+    for (var i=0; i<xrefs.length; i++) {
+      const xref = xrefs[i];
+      tippyHover(xref, undefined, function(instance) {
+        instance.disable();
+        let url = xref.getAttribute('href');
+        let hash = undefined; 
+        if (url.startsWith('#')) {
+          hash = url;
+        } else {
+          try { hash = new URL(url).hash; } catch {}
+        }
+        if (hash) {
+          const id = hash.replace(/^#\/?/, "");
+          const note = window.document.getElementById(id);
+          if (note !== null) {
+            try {
+              const html = processXRef(id, note.cloneNode(true));
+              instance.setContent(html);
+            } finally {
+              instance.enable();
+              instance.show();
+            }
+          } else {
+            // See if we can fetch this
+            fetch(url.split('#')[0])
+            .then(res => res.text())
+            .then(html => {
+              const parser = new DOMParser();
+              const htmlDoc = parser.parseFromString(html, "text/html");
+              const note = htmlDoc.getElementById(id);
+              if (note !== null) {
+                const html = processXRef(id, note);
+                instance.setContent(html);
+              } 
+            }).finally(() => {
+              instance.enable();
+              instance.show();
+            });
+          }
+        } else {
+          // See if we can fetch a full url (with no hash to target)
+          // This is a special case and we should probably do some content thinning / targeting
+          fetch(url)
+          .then(res => res.text())
+          .then(html => {
+            const parser = new DOMParser();
+            const htmlDoc = parser.parseFromString(html, "text/html");
+            const note = htmlDoc.querySelector('main.content');
+            if (note !== null) {
+              // This should only happen for chapter cross references
+              // (since there is no id in the URL)
+              // remove the first header
+              if (note.children.length > 0 && note.children[0].tagName === "HEADER") {
+                note.children[0].remove();
+              }
+              const html = processXRef(null, note);
+              instance.setContent(html);
+            } 
+          }).finally(() => {
+            instance.enable();
+            instance.show();
+          });
+        }
+      }, function(instance) {
+      });
+    }
+        let selectedAnnoteEl;
+        const selectorForAnnotation = ( cell, annotation) => {
+          let cellAttr = 'data-code-cell="' + cell + '"';
+          let lineAttr = 'data-code-annotation="' +  annotation + '"';
+          const selector = 'span[' + cellAttr + '][' + lineAttr + ']';
+          return selector;
+        }
+        const selectCodeLines = (annoteEl) => {
+          const doc = window.document;
+          const targetCell = annoteEl.getAttribute("data-target-cell");
+          const targetAnnotation = annoteEl.getAttribute("data-target-annotation");
+          const annoteSpan = window.document.querySelector(selectorForAnnotation(targetCell, targetAnnotation));
+          const lines = annoteSpan.getAttribute("data-code-lines").split(",");
+          const lineIds = lines.map((line) => {
+            return targetCell + "-" + line;
+          })
+          let top = null;
+          let height = null;
+          let parent = null;
+          if (lineIds.length > 0) {
+              //compute the position of the single el (top and bottom and make a div)
+              const el = window.document.getElementById(lineIds[0]);
+              top = el.offsetTop;
+              height = el.offsetHeight;
+              parent = el.parentElement.parentElement;
+            if (lineIds.length > 1) {
+              const lastEl = window.document.getElementById(lineIds[lineIds.length - 1]);
+              const bottom = lastEl.offsetTop + lastEl.offsetHeight;
+              height = bottom - top;
+            }
+            if (top !== null && height !== null && parent !== null) {
+              // cook up a div (if necessary) and position it 
+              let div = window.document.getElementById("code-annotation-line-highlight");
+              if (div === null) {
+                div = window.document.createElement("div");
+                div.setAttribute("id", "code-annotation-line-highlight");
+                div.style.position = 'absolute';
+                parent.appendChild(div);
+              }
+              div.style.top = top - 2 + "px";
+              div.style.height = height + 4 + "px";
+              div.style.left = 0;
+              let gutterDiv = window.document.getElementById("code-annotation-line-highlight-gutter");
+              if (gutterDiv === null) {
+                gutterDiv = window.document.createElement("div");
+                gutterDiv.setAttribute("id", "code-annotation-line-highlight-gutter");
+                gutterDiv.style.position = 'absolute';
+                const codeCell = window.document.getElementById(targetCell);
+                const gutter = codeCell.querySelector('.code-annotation-gutter');
+                gutter.appendChild(gutterDiv);
+              }
+              gutterDiv.style.top = top - 2 + "px";
+              gutterDiv.style.height = height + 4 + "px";
+            }
+            selectedAnnoteEl = annoteEl;
+          }
+        };
+        const unselectCodeLines = () => {
+          const elementsIds = ["code-annotation-line-highlight", "code-annotation-line-highlight-gutter"];
+          elementsIds.forEach((elId) => {
+            const div = window.document.getElementById(elId);
+            if (div) {
+              div.remove();
+            }
+          });
+          selectedAnnoteEl = undefined;
+        };
+          // Handle positioning of the toggle
+      window.addEventListener(
+        "resize",
+        throttle(() => {
+          elRect = undefined;
+          if (selectedAnnoteEl) {
+            selectCodeLines(selectedAnnoteEl);
+          }
+        }, 10)
+      );
+      function throttle(fn, ms) {
+      let throttle = false;
+      let timer;
+        return (...args) => {
+          if(!throttle) { // first call gets through
+              fn.apply(this, args);
+              throttle = true;
+          } else { // all the others get throttled
+              if(timer) clearTimeout(timer); // cancel #2
+              timer = setTimeout(() => {
+                fn.apply(this, args);
+                timer = throttle = false;
+              }, ms);
+          }
+        };
+      }
+        // Attach click handler to the DT
+        const annoteDls = window.document.querySelectorAll('dt[data-target-cell]');
+        for (const annoteDlNode of annoteDls) {
+          annoteDlNode.addEventListener('click', (event) => {
+            const clickedEl = event.target;
+            if (clickedEl !== selectedAnnoteEl) {
+              unselectCodeLines();
+              const activeEl = window.document.querySelector('dt[data-target-cell].code-annotation-active');
+              if (activeEl) {
+                activeEl.classList.remove('code-annotation-active');
+              }
+              selectCodeLines(clickedEl);
+              clickedEl.classList.add('code-annotation-active');
+            } else {
+              // Unselect the line
+              unselectCodeLines();
+              clickedEl.classList.remove('code-annotation-active');
+            }
+          });
+        }
+    const findCites = (el) => {
+      const parentEl = el.parentElement;
+      if (parentEl) {
+        const cites = parentEl.dataset.cites;
+        if (cites) {
+          return {
+            el,
+            cites: cites.split(' ')
+          };
+        } else {
+          return findCites(el.parentElement)
+        }
+      } else {
+        return undefined;
+      }
+    };
+    var bibliorefs = window.document.querySelectorAll('a[role="doc-biblioref"]');
+    for (var i=0; i<bibliorefs.length; i++) {
+      const ref = bibliorefs[i];
+      const citeInfo = findCites(ref);
+      if (citeInfo) {
+        tippyHover(citeInfo.el, function() {
+          var popup = window.document.createElement('div');
+          citeInfo.cites.forEach(function(cite) {
+            var citeDiv = window.document.createElement('div');
+            citeDiv.classList.add('hanging-indent');
+            citeDiv.classList.add('csl-entry');
+            var biblioDiv = window.document.getElementById('ref-' + cite);
+            if (biblioDiv) {
+              citeDiv.innerHTML = biblioDiv.innerHTML;
+            }
+            popup.appendChild(citeDiv);
+          });
+          return popup.innerHTML;
+        });
+      }
+    }
+  });
+  </script>
+</div> <!-- /content -->
+
+
+
+
+</body></html>

@@ -10,7 +10,7 @@ format:
     toc: true
     number-sections: true
 execute:
-  echo: false
+  echo: true
   warning: false
   message: false
 ---
@@ -73,8 +73,8 @@ library(gbm)
 theme_set(theme_minimal(base_size = 11))
 dm_palette <- c("No Diabetes" = "#4C9F70", "Diabetes" = "#D1495B")
 
-df_full  <- read_csv("../Raw Data/diabetes_binary_health_indicators_BRFSS2015.csv")
-df_model <- read_csv("../Raw Data/diabetes_binary_5050split_health_indicators_BRFSS2015.csv")
+df_full  <- read_csv("Raw Data/diabetes_binary_health_indicators_BRFSS2015.csv")
+df_model <- read_csv("Raw Data/diabetes_binary_5050split_health_indicators_BRFSS2015.csv")
 
 df_model <- df_model |>
   mutate(Diabetes_binary = factor(
