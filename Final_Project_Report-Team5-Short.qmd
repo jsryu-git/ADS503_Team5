@@ -1,0 +1,265 @@
+---
+title: "Predicting Diabetes Risk Using Health Indicators"
+author: "Mehson Delan, Malik Tisani, Vince Garcia, Jun Sik Ryu"
+format:
+  html:
+    toc: false
+    number-sections: true
+    code-fold: true
+  pdf:
+    toc: false
+    number-sections: true
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+# Diabetes Risk Prediction Using Health Indicators
+
+## Problem Statement
+
+Diabetes is one of the most significant chronic health conditions in the United States, associated with substantial healthcare costs, long-term complications, and reduced quality of life. Traditional screening often requires clinical testing and direct medical evaluation. However, many risk factors are observable through demographic characteristics, health behaviors, and self-reported health conditions routinely collected in population surveys.
+
+The objective of this project is to determine whether predictive modeling can accurately classify individuals as diabetic or non-diabetic using readily available health indicators from the 2015 Behavioral Risk Factor Surveillance System (BRFSS) survey. Specifically:
+
+> Can machine learning models accurately predict diabetes status using demographic, behavioral, and health-related indicators from the BRFSS dataset?
+
+## Analytical Approach
+
+To address this question, four modeling approaches are compared under a consistent validation framework:
+
+- Logistic Regression (baseline)
+- Elastic Net (penalized regression)
+- Random Forest (ensemble tree-based)
+- Gradient Boosting Machine (GBM)
+
+All models are evaluated using ROC AUC, balanced accuracy, sensitivity, and specificity. Because the dataset is class-imbalanced, raw accuracy is de-emphasized throughout.
+
+# Dataset Overview
+
+## Data Source
+
+The dataset comes from the Diabetes Health Indicators Dataset published on Kaggle, derived from the 2015 BRFSS conducted by the Centers for Disease Control and Prevention (CDC).
+
+## Dataset Characteristics
+
+The full binary dataset was used for EDA because it preserves the actual real-world class distribution observed in BRFSS 2015. The balanced 50/50 dataset was used for model development to prevent the majority class from dominating the learning process and to improve the model's ability to detect diabetes cases. This choice creates a tradeoff: model training becomes more sensitive to the minority class, but the resulting probabilities may not be calibrated to the natural population prevalence. For that reason, ROC AUC, balanced accuracy, sensitivity, and specificity are emphasized over raw accuracy, and any deployment-oriented version of this model would require recalibration using the full class distribution.
+
+| Characteristic | Value |
+|----|---:|
+| Observations (full binary) | 253,680 |
+| Observations (50/50 balanced, used for modeling) | 70,692 |
+| Predictors | 21 |
+| Response Variable | Diabetes_binary (0 = No Diabetes, 1 = Diabetes) |
+| Data Source | BRFSS 2015 |
+
+Key predictors include BMI, high blood pressure, high cholesterol, smoking status, physical activity, fruit and vegetable consumption, general health, mental health, physical health days, difficulty walking, age, education, and income.
+
+# Data Quality Review
+
+## Dataset Structure
+
+The dataset contains 253,680 observations and 22 variables. Predictors include demographic, behavioral, and health-related characteristics relevant to diabetes risk.
+
+## Summary Statistics
+
+Summary statistics were reviewed to assess variable distributions, ranges, and potential anomalies. Detailed descriptive output is omitted from the main report and available through the reproducible analysis code.
+
+## Missing Values Assessment
+
+No missing values were identified in either dataset. All 22 columns show a complete rate of 1.0 across all 253,680 observations. Imputation was therefore not required.
+
+## Outlier Review
+
+BMI was examined for extreme values. The variable ranges from 12 to 98, with 2,175 observations above 50 and 805 above 60. A BMI of 98 is not physiologically plausible and likely reflects data entry errors. These extreme values were retained in the current reproducible workflow so that the code remains consistent with the supplied datasets. However, this issue should be documented as a limitation, and future iterations should compare the current approach against a capped or winsorized BMI feature.
+
+MentHlth and PhysHlth are heavily right-skewed with large spikes at zero — most respondents report no bad mental or physical health days. Both variables could benefit from recoding into a binary flag (any bad days vs. none) or buckets (none, some, many), depending on modeling needs.
+
+# Exploratory Data Analysis
+
+Exploratory data analysis was conducted to understand the relationship between diabetes status and available predictors using the full binary dataset (n = 253,680). Both graphical and numerical summaries were produced.
+
+## Diabetes Class Distribution
+
+The response variable is heavily imbalanced. Only 13.9% of respondents (n = 35,346) reported diabetes, while 86.1% (n = 218,334) did not. This imbalance means raw accuracy is not a reliable evaluation metric — a model that always predicts "No Diabetes" would achieve 86% accuracy without detecting a single case. This is why ROC AUC and balanced accuracy are prioritized throughout.
+
+## Predictor Association Ranking
+
+Before examining individual predictors, a ranked association table was computed. Cramér's V (chi-squared based) was used for binary and ordinal predictors; Cohen's d (standardized mean difference) was used for the three continuous predictors. These metrics are not on the same scale, so the ranking is approximate.
+
+BMI is the strongest single predictor (Cohen's d = 0.641), followed by PhysHlth (d = 0.502), GenHlth (V = 0.299), HighBP (V = 0.263), and DiffWalk (V = 0.218). Lifestyle flags such as Fruits, Veggies, Smoker, and AnyHealthcare show weak individual associations and are unlikely to dominate feature importance charts, though they may still contribute within a full model.
+
+## Binary Predictors
+
+Diabetes rates within each yes/no predictor were compared to identify which binary flags carry the most signal. HighBP (6.0% vs. 24.4%), HeartDiseaseorAttack (12.0% vs. 33.0%), Stroke (13.2% vs. 31.8%), DiffWalk (10.5% vs. 30.7%), and HighChol (8.0% vs. 22.0%) all show rates more than double between the No and Yes groups. HvyAlcoholConsump shows an unexpected inverse pattern — heavy drinkers have a *lower* diabetes rate (5.8% vs. 14.4%) — which likely reflects a survivorship or sampling artifact rather than a protective causal effect. Fruits, Veggies, and AnyHealthcare show minimal separation between groups.
+
+## Continuous Predictor Analysis
+
+BMI demonstrated the strongest continuous relationship with diabetes status. Diabetic respondents exhibited substantially higher BMI values than non-diabetic respondents. PhysHlth and MentHlth were highly right-skewed and contained large concentrations of zero values, suggesting opportunities for alternative feature engineering approaches in future work.
+
+## Ordinal Predictor Analysis
+
+GenHlth displayed the strongest ordinal relationship with diabetes prevalence. Diabetes rates increased consistently across worsening health categories. Similar monotonic trends were observed for Age, Income, and Education, indicating that both health status and socioeconomic factors contribute predictive information.
+
+## Correlation Analysis
+
+Correlation analysis revealed moderate relationships among several health-related variables, but no pairwise correlations were sufficiently large to indicate severe multicollinearity. Therefore, no variables were removed solely due to correlation concerns.
+
+## EDA Summary
+
+The exploratory analysis highlights four key patterns that directly inform the modeling strategy:
+
+- **BMI** is the strongest individual predictor; diabetic respondents have meaningfully higher BMI with a right-skewed distribution and implausible high-end values requiring preprocessing.
+- **Comorbidity flags** (HighBP, HighChol, HeartDiseaseorAttack, Stroke, DiffWalk) all show diabetes rates more than double in the positive group, making them collectively important even where individual association strengths are moderate.
+- **General and physical health self-reports** (GenHlth, PhysHlth) show strong monotone relationships with diabetes status and moderate inter-correlation, suggesting they may partially substitute for each other in regularized models.
+- **Socioeconomic variables** (Income, Education, Age) trend in expected directions and add independent signal beyond clinical indicators, though they are correlated with each other.
+
+# Data Preparation and Preprocessing
+
+## Data Splitting
+
+The 50/50 balanced dataset (n = 70,692) was used for modeling to provide equal class representation during training. A stratified 80/20 split was applied to preserve class balance across the training and test sets.
+
+| Dataset            | Observations | Diabetes % |
+|--------------------|-------------:|-----------:|
+| Training Set (80%) |       56,553 |      50.0% |
+| Testing Set (20%)  |       14,139 |      50.0% |
+
+Cross-validation on the training set serves as the validation step; no separate held-out validation set was created beyond the test set. This approach follows the predictive modeling strategy described by Kuhn and Johnson (2013), where resampling is used for model tuning and a held-out test set is reserved for final performance estimation.
+
+## Feature Preparation
+
+Preprocessing was implemented as a `recipes` pipeline fit exclusively on the training data to prevent data leakage. The pipeline includes:
+
+- Removing zero-variance predictors (`step_zv`)
+- Standardizing all numeric predictors to mean 0 and standard deviation 1 (`step_normalize`)
+
+Binary and ordinal variables were left as numeric for compatibility with all four modeling methods. No imputation was required given the absence of missing values.
+
+## Handling Correlated Features
+
+Correlation analysis did not reveal multicollinearity severe enough to require predictor removal. All 21 predictors were retained. This decision preserves potentially useful clinical and behavioral information while allowing the modeling algorithms to handle redundancy differently. Elastic Net addresses correlated features through its combined L1/L2 penalty, while Random Forest and GBM are less sensitive to collinearity because splits are selected locally within tree structures.
+
+# Model Strategy and Justification
+
+The modeling strategy was designed to compare an interpretable statistical baseline against increasingly flexible machine learning methods. This structure supports both prediction and interpretation, which is important in healthcare-related applications.
+
+## Logistic Regression as Baseline
+
+Logistic Regression was used as the baseline because it is transparent, efficient, and widely used for binary healthcare outcomes. It provides a useful benchmark and allows the direction of predictor effects to be interpreted through coefficients or odds ratios. Its limitation is that it assumes additive linear effects on the log-odds scale unless interactions or nonlinear terms are manually engineered.
+
+## Elastic Net for Regularized Linear Modeling
+
+Elastic Net extends Logistic Regression by adding regularization. This is appropriate because several health-status predictors are moderately correlated, including general health, physical health, and difficulty walking. The L1 component can shrink weak predictors toward zero, while the L2 component stabilizes coefficient estimates when predictors overlap.
+
+## Random Forest for Nonlinear Interactions
+
+Random Forest was included because diabetes risk may depend on interactions between risk factors, such as BMI, age, high blood pressure, cholesterol status, and general health. Unlike Logistic Regression, Random Forest can capture nonlinear and interaction effects without manually specifying them.
+
+## GBM for Sequential Error Correction
+
+GBM was included as a second ensemble method because boosted trees often perform well on structured tabular datasets. GBM sequentially improves prediction by focusing on observations that earlier trees classified poorly. Because this flexibility can overfit, tuning and test-set evaluation are especially important.
+
+# Baseline Model: Logistic Regression
+
+Logistic regression was selected as the baseline because it is interpretable, computationally efficient, and a standard benchmark in healthcare prediction. It assumes a linear relationship between the log-odds of diabetes and the predictors, which may underfit if important non-linear interactions exist.
+
+## Baseline Model Performance
+
+The logistic regression model provides a stable performance floor for comparison. Sensitivity and balanced accuracy are the primary metrics of interest given the clinical cost of false negatives (missed diabetes cases).
+
+# Model Development and Tuning
+
+All models share the same 5-fold cross-validation setup and are optimized on ROC AUC to provide a consistent, threshold-independent comparison.
+
+## Cross-Validation Strategy
+
+| Parameter                |                   Value |
+|--------------------------|------------------------:|
+| Method                   | k-fold cross-validation |
+| Number of Folds          |                       5 |
+| Optimization Metric      |                 ROC AUC |
+| Class Probability Output |                 Enabled |
+
+## Elastic Net
+
+Elastic Net combines L1 (lasso) and L2 (ridge) regularization, controlled by the mixing parameter alpha and the penalty strength lambda. This approach reduces overfitting, handles correlated predictors by shrinking their coefficients jointly, and can perform automatic variable selection by driving weak coefficients to zero. A 10-point tuning grid was searched over alpha and lambda combinations.
+
+## Random Forest
+
+Random Forest builds an ensemble of de-correlated decision trees by randomly subsetting both observations and predictors at each split, then averages their predictions. This reduces variance relative to a single tree and captures non-linear relationships and variable interactions without explicit feature engineering. Hyperparameters (mtry, split rule, minimum node size) were first tuned on a 20% subsample of training data using 3-fold CV to reduce compute time, and the best configuration was then trained on the full training set using 300 trees.
+
+## Gradient Boosting Machine
+
+GBM builds trees sequentially, with each new tree improving the errors of the previous ensemble. This iterative error-correction approach often yields strong predictive performance but requires careful tuning to avoid overfitting. The code below defines a candidate grid for number of trees, interaction depth, shrinkage, and minimum observations per node. In this draft version, the GBM chunk uses a placeholder configuration for runtime control.
+
+# Validation and Testing
+
+After tuning, all four models were evaluated on the held-out test set to estimate real-world performance on unseen data.
+
+## Model Comparison
+
+The performance differences among the four candidate models were relatively small, indicating that the available health indicators contain strong predictive information regardless of modeling approach. Logistic Regression and Elastic Net produced nearly identical results, suggesting that predictor collinearity did not substantially impair model performance. Random Forest improved sensitivity and achieved stronger discrimination than the linear models. However, GBM produced the highest ROC AUC (0.8303), highest balanced accuracy (0.7498), and a strong balance between sensitivity and specificity. These results suggest that modest nonlinear relationships and interactions among predictors contribute meaningful predictive value beyond what can be captured by linear models alone, leading to the selection of GBM as the final model.
+
+## ROC Curve Comparison
+
+ROC curves were compared to assess each model's ability to separate diabetic from non-diabetic individuals across all possible classification thresholds. A higher area under the curve indicates better discrimination. Tree-based models are expected to outperform linear approaches if non-linear feature interactions exist in the data.
+
+## Final Performance Metrics
+
+| Metric            |  Value |
+|-------------------|-------:|
+| ROC AUC           | 0.8302 |
+| Accuracy          | 0.7504 |
+| Balanced Accuracy | 0.7504 |
+| Sensitivity       | 0.7748 |
+| Specificity       | 0.7260 |
+
+## Variable Importance
+
+Variable importance analysis identified General Health (GenHlth), High Blood Pressure (HighBP), Body Mass Index (BMI), Age, and High Cholesterol (HighChol) as the most influential predictors of diabetes status. These findings closely mirror the exploratory data analysis, where BMI, GenHlth, HighBP, and Age consistently demonstrated strong associations with diabetes prevalence. The agreement between EDA findings and model-derived importance rankings increases confidence that the model is capturing clinically meaningful risk factors rather than artifacts within the dataset. Furthermore, many of these variables are well-established predictors of diabetes in epidemiological and clinical research, supporting the practical relevance of the model's predictions
+
+# Discussion and Conclusions
+
+The objective of this project was to determine whether diabetes status could be predicted using demographic, behavioral, and health-related indicators from the BRFSS dataset. Results confirm that predictive modeling can identify individuals at elevated diabetes risk using readily available survey-based health information.
+
+Across the analysis, BMI, general health self-rating, high blood pressure, physical health days, and difficulty walking emerged as the most informative predictors — consistent with established diabetes risk factors and with the EDA findings. Socioeconomic variables (income, education) provided additional signal beyond clinical indicators alone.
+
+From a practical healthcare perspective, these findings suggest that survey-based screening tools could help prioritize individuals for follow-up clinical evaluation. The model should not be interpreted as a diagnostic replacement. Rather, it could support early outreach by identifying respondents whose self-reported health profiles resemble those of individuals with diabetes.
+
+The final model, GBM, achieved a test set ROC AUC of 0.8303, indicating strong discriminative ability and substantially better performance than random classification, which would produce an ROC AUC of 0.50. The model correctly identified approximately 77.5% of diabetes cases while maintaining reasonable specificity. Although the performance improvement over Logistic Regression was modest, the results suggest that nonlinear relationships among health indicators provide additional predictive value. GBM therefore represents an appropriate balance between predictive performance and practical utility for diabetes risk screening applications.
+
+## Limitations
+
+1.  The dataset relies on self-reported survey responses, which may introduce recall and social desirability bias.
+2.  The analysis is cross-sectional and cannot establish causal relationships between predictors and diabetes status.
+3.  External validation was not performed on a separate BRFSS survey year or independent cohort.
+4.  Clinical laboratory values (e.g., HbA1c, fasting glucose) and family history were not available and would likely improve predictive performance.
+5.  The 50/50 balanced training dataset does not reflect real-world diabetes prevalence (\~14%), so model calibration for deployment would require a recalibration to the natural class distribution.
+
+## Future Work
+
+- Test additional gradient boosting implementations (XGBoost, LightGBM) with broader hyperparameter grids.
+- Evaluate cost-sensitive classification or threshold optimization tuned to minimize false negatives specifically.
+- Perform external validation on a different BRFSS year to assess temporal generalizability.
+- Incorporate clinical variables if available to assess incremental predictive gain.
+- Explore recoding of MentHlth and PhysHlth (e.g., binary flags for any bad days) and examine impact on model performance.
+
+## Conclusion
+
+This project demonstrates that diabetes status can be predicted with meaningful accuracy using behavioral and health-related indicators from the BRFSS survey. The modeling results suggest that predictive analytics could serve as a low-cost screening support tool for identifying individuals who may benefit from earlier preventive care or clinical follow-up, without requiring clinical laboratory testing.
+
+# References
+
+Centers for Disease Control and Prevention. (2015). *Behavioral Risk Factor Surveillance System survey data*. U.S. Department of Health and Human Services.
+
+Kuhn, M., & Johnson, K. (2013). *Applied predictive modeling*. Springer.
+
+Teboul, A. (2023). *Diabetes health indicators dataset*. Kaggle.
+
+# Appendix
+
+Complete reproducible R code for data preparation, model training, hyperparameter tuning, and evaluation is available in the project GitHub repository:
+
+https://github.com/jsryu-git/ADS503_Team5
